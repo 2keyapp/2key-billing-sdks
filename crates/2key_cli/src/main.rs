@@ -143,6 +143,57 @@ fn main() -> ExitCode {
                 }
             }
         }
+        Some("sync-license") => {
+            // TWOKEY_API_BASE_URL + TWOKEY_PUBLIC_KEY_PEM + TWOKEY_ACCESS_TOKEN
+            // optional: --etag <etag>  --party <paying_party_id>
+            let mut etag: Option<String> = None;
+            let mut party: Option<String> = None;
+            while let Some(a) = args.next() {
+                match a.as_str() {
+                    "--etag" => etag = args.next(),
+                    "--party" => party = args.next(),
+                    _ => {}
+                }
+            }
+            let cfg = match load_config_from_env() {
+                Ok(c) => c,
+                Err(e) => {
+                    eprintln!("{e}");
+                    return ExitCode::FAILURE;
+                }
+            };
+            let token = env::var("TWOKEY_ACCESS_TOKEN").unwrap_or_default();
+            if token.trim().is_empty() {
+                eprintln!("set TWOKEY_ACCESS_TOKEN (billing API JWT)");
+                return ExitCode::FAILURE;
+            }
+            let client = match TwoKeyClient::with_memory(cfg) {
+                Ok(c) => c,
+                Err(e) => {
+                    eprintln!("{e}");
+                    return ExitCode::FAILURE;
+                }
+            };
+            let mut session = two_key_core::AccountSession::new("cli");
+            session.access_token = Some(token);
+            session.license_etag = etag;
+            session.paying_party_id_header = party;
+            match client.sync_license(&mut session) {
+                Ok(payload) => {
+                    println!(
+                        "ok paying_party={} subscriptions={} etag={}",
+                        payload.paying_party.id,
+                        payload.subscriptions.len(),
+                        session.license_etag.as_deref().unwrap_or("-")
+                    );
+                    ExitCode::SUCCESS
+                }
+                Err(e) => {
+                    eprintln!("{e}");
+                    ExitCode::FAILURE
+                }
+            }
+        }
         _ => {
             eprintln!("two-key — 2key Billing CLI");
             eprintln!("commands:");
@@ -152,6 +203,7 @@ fn main() -> ExitCode {
             eprintln!("  verify-license --pem <public.pem> --jwt <token-or-file>");
             eprintln!("  session-demo   (TWOKEY_* env; TWOKEY_USE_KEYRING=1 for OS keyring)");
             eprintln!("  auth-token     (pasted token / TWOKEY_ACCESS_TOKEN)");
+            eprintln!("  sync-license   (TWOKEY_API_BASE_URL + PEM + ACCESS_TOKEN; --etag --party)");
             ExitCode::SUCCESS
         }
     }

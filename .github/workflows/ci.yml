@@ -32,11 +32,16 @@ jobs:
 
   dart:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/dart
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build two-key-core cdylib
+        run: cargo build -p two-key-core
       - uses: dart-lang/setup-dart@v1
-      - run: dart pub get
-      - run: dart test
+      - name: Dart tests
+        working-directory: packages/dart
+        run: |
+          dart pub get
+          dart test
+        env:
+          TWOKEY_CORE_LIB: ${{ github.workspace }}/target/debug/libtwo_key_core.so

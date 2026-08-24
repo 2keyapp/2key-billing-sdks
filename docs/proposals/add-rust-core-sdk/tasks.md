@@ -29,19 +29,20 @@
 
 - [x] 3.1 Define stable Rust facade module intended for FFI (`facade::TwoKeyClient`)
 - [x] 3.1b JSON/string `ffi::*` helpers for FRB/UniFFI (`ffi_verify_license_json`, …)
-- [x] 3.2 Pin FRB target **2.11.x** in `bindings/README.md` (codegen not generated yet)
+- [x] 3.1c C ABI (`c_api.rs`) + `cdylib` crate type
+- [x] 3.2 Pin FRB target **2.11.x**; interim **dart:ffi** wired to C ABI
 - [ ] 3.3 (Later) UniFFI scaffolding for Kotlin/Swift from same facade
-- [ ] 3.4 CI: build `2key_core` + Dart bindings on Linux/macOS/Windows targets as needed
+- [x] 3.4 CI builds `two-key-core` cdylib before Dart FFI tests
 
 ## 4. Dart wrapper (canary)
 
 - [x] 4.0 Scaffold `packages/dart` (`two_key_dart_sdk`) with fixture-aligned verify + API client
 - [x] 4.0b Session manager + portal helpers + `LicenseBackend` dual-path flag
-- [ ] 4.1 Wire `rustCore` path via FRB to `ffi_*` / facade
+- [x] 4.1 Wire `rustCore` path via dart:ffi → C ABI (`TwoKeyCoreFfi`)
 - [ ] 4.2 Map existing public surface (`BillingSdkConfig`, session, license sync) onto facade
 - [ ] 4.3 Keep Better Auth Dart client internal for Phase A token mint
 - [ ] 4.4 Host still supplies `AuthSessionLauncher` + storage
-- [ ] 4.5 Conformance + integration tests green on Rust path
+- [ ] 4.5 Conformance + integration tests green on Rust path (license JWT roundtrip via FFI)
 - [ ] 4.6 Scomm/secMail optional canary pin; soak; then default Rust path
 - [ ] 4.7 Remove duplicate pure-Dart license/session code after soak
 
@@ -51,7 +52,7 @@
 - [x] 5.1b `verify-license` + `session-demo` commands
 - [x] 5.2 Headless auth adapter (pasted / env token via `StaticTokenAuth` + `auth-token`)
 - [x] 5.3 OS keyring storage adapter (`KeyringStorage`, `TWOKEY_USE_KEYRING=1`)
-- [ ] 5.4 Smoke: configure → auth → license sync against staging
+- [x] 5.4 `sync-license` command (staging smoke when env credentials set)
 
 ## 6. Browser SDK (`@2key/ts-sdk`)
 

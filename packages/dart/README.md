@@ -2,15 +2,23 @@
 
 Dart / Flutter host-facing SDK for 2key Billing.
 
-**Current:** interim pure-Dart (claim parse, ES256 verify via `dart_jsonwebtoken`, `/api/v1` license client).  
-**Next:** flutter_rust_bridge → `crates/2key_core` dual-path; Better Auth stays internal (Phase A).
+**Dual-path license verify:**
 
-Host apps depend on **this package only** — never `better_auth` or `two-key-core`.
+| Backend | How |
+|---------|-----|
+| `LicenseBackend.pureDart` (default) | `dart_jsonwebtoken` |
+| `LicenseBackend.rustCore` | `dart:ffi` → `two_key_core` cdylib |
 
-```yaml
-dependencies:
-  two_key_dart_sdk:
-    path: ../path/to/2key-billing-sdks/packages/dart
+```bash
+cargo build -p two-key-core
+# optional: export TWOKEY_CORE_LIB=/path/to/libtwo_key_core.so
 ```
 
-Production Scomm still uses `billing_dart_sdk` until dual-path cutover.
+```dart
+TwoKeyRuntime.licenseBackend = LicenseBackend.rustCore;
+final payload = verifyLicenseJwt(jwt, pem);
+```
+
+Host apps depend on **this package only** — never `better_auth` or `two-key-core` crates directly.
+
+Production Scomm still uses `billing_dart_sdk` until dual-path cutover + Better Auth wiring.

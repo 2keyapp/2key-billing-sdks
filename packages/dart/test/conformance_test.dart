@@ -67,9 +67,7 @@ void main() {
     );
   });
 
-  test('rust backend flag not wired', () {
-    TwoKeyRuntime.licenseBackend = LicenseBackend.rustCore;
-    expect(TwoKeyRuntime.ensureBackendAvailable, throwsUnsupportedError);
-    TwoKeyRuntime.licenseBackend = LicenseBackend.pureDart;
+  test('rust backend default is pureDart', () {
+    expect(TwoKeyRuntime.licenseBackend, LicenseBackend.pureDart);
   });
 }

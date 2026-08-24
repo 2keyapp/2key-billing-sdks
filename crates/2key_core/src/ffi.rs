@@ -36,15 +36,39 @@ pub fn ffi_verify_license_json(public_key_pem: String, jwt: String) -> String {
 fn verify_inner(pem: &str, jwt: &str) -> Result<String> {
     let verifier = LicenseVerifier::from_pem(pem)?;
     match verifier.verify_and_decode(jwt, &SystemClock) {
-        VerifyOutcome::Success(p) => Ok(serde_json::json!({
-            "ok": true,
-            "paying_party_id": p.paying_party.id,
-            "subscription_count": p.subscriptions.len(),
-            "payload_version": p.payload_version,
-        })
-        .to_string()),
+        VerifyOutcome::Success(p) => {
+            // Re-decode JWT payload JSON for wrappers that need full claims.
+            let claims = jwt_payload_json(jwt)?;
+            Ok(serde_json::json!({
+                "ok": true,
+                "paying_party_id": p.paying_party.id,
+                "subscription_count": p.subscriptions.len(),
+                "payload_version": p.payload_version,
+                "claims": claims,
+            })
+            .to_string())
+        }
         VerifyOutcome::Failure { code, message } => Err(TwoKeyError::new(code, message)),
     }
+}
+
+fn jwt_payload_json(jwt: &str) -> Result<serde_json::Value> {
+    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+    let parts: Vec<&str> = jwt.trim().split('.').collect();
+    if parts.len() != 3 {
+        return Err(TwoKeyError::new(
+            ErrorCode::LicenseMalformed,
+            "Invalid JWT shape",
+        ));
+    }
+    let bytes = URL_SAFE_NO_PAD.decode(parts[1].as_bytes()).map_err(|e| {
+        TwoKeyError::new(ErrorCode::LicenseMalformed, "Invalid JWT payload encoding")
+            .with_detail(e.to_string())
+    })?;
+    serde_json::from_slice(&bytes).map_err(|e| {
+        TwoKeyError::new(ErrorCode::LicenseMalformed, "Invalid JWT payload JSON")
+            .with_detail(e.to_string())
+    })
 }
 
 /// Validate required config fields; returns normalized `api_base_url` or error JSON.

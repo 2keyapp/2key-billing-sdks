@@ -4,24 +4,40 @@ Shared FFI scaffolding for language wrappers over `two-key-core`.
 
 | Binding | Status | Notes |
 |---------|--------|-------|
-| flutter_rust_bridge | **Pinned target: 2.11.x** | Use JSON/string helpers in `two_key_core::ffi` first |
-| UniFFI | Planned | Kotlin + Swift from the same facade |
+| **C ABI + dart:ffi** | **Wired** | `c_api.rs` → `packages/dart` `TwoKeyCoreFfi` / `LicenseBackend.rustCore` |
+| flutter_rust_bridge | Target **2.11.x** | Can replace C ABI later; same `ffi_*` surface |
+| UniFFI | Planned | Kotlin + Swift |
 
-## flutter_rust_bridge (next implementation step)
+## C ABI (current)
 
-1. Pin **flutter_rust_bridge `^2.11.0`** in the Dart package when wiring begins.
-2. Expose only `crate::ffi` + `crate::facade` — do not bind internal modules.
-3. Suggested first FRB surface (already available as plain Rust):
-   - `ffi_normalize_api_base_url`
-   - `ffi_verify_license_json`
-   - `ffi_validate_config_json`
-   - `ffi_error_codes`
-4. Dual-path flag in Dart: `TwoKeyRuntime.licenseBackend` (`pureDart` \| `rustCore`).
+Build:
 
 ```bash
-# After FRB codegen is added:
 cargo build -p two-key-core
-# generate Dart under packages/dart/lib/src/frb/
+# Windows: target/debug/two_key_core.dll
+# Linux:   target/debug/libtwo_key_core.so
+# macOS:   target/debug/libtwo_key_core.dylib
 ```
 
-Do not fork business logic in bindings — only adapt types and async.
+Exports:
+
+- `two_key_string_free`
+- `two_key_normalize_api_base_url`
+- `two_key_verify_license_json` (JSON includes `claims` on success)
+- `two_key_validate_config_json`
+- `two_key_error_codes`
+
+Dart:
+
+```dart
+TwoKeyRuntime.licenseBackend = LicenseBackend.rustCore;
+// optional: TwoKeyRuntime.nativeLibraryPath = r'...\two_key_core.dll';
+// or: set TWOKEY_CORE_LIB
+final payload = verifyLicenseJwt(jwt, pem);
+```
+
+## flutter_rust_bridge (optional upgrade)
+
+1. Pin **flutter_rust_bridge `^2.11.0`** when migrating off raw C ABI.
+2. Prefer wrapping `crate::ffi` / `crate::facade` only.
+3. Dual-path flag remains `TwoKeyRuntime.licenseBackend`.
