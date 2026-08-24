@@ -1,24 +1,16 @@
-# 2key_dart_sdk (migration)
+# 2key_dart_sdk (`two_key_dart_sdk`)
 
-**Status:** Not yet relocated. Production code still lives in  
-[`billing_dart_sdk`](https://github.com/2keyapp/billing_dart_sdk) (or your org mirror).
+Dart / Flutter host-facing SDK for 2key Billing.
 
-## Target layout
+**Current:** interim pure-Dart (claim parse, ES256 verify via `dart_jsonwebtoken`, `/api/v1` license client).  
+**Next:** flutter_rust_bridge → `crates/2key_core` dual-path; Better Auth stays internal (Phase A).
 
+Host apps depend on **this package only** — never `better_auth` or `two-key-core`.
+
+```yaml
+dependencies:
+  two_key_dart_sdk:
+    path: ../path/to/2key-billing-sdks/packages/dart
 ```
-packages/dart/   → pub package name `2key_dart_sdk`
-                 → flutter_rust_bridge → crates/2key_core (two-key-core)
-                 → Better Auth Dart client remains internal (Phase A)
-```
 
-## Host apps
-
-Depend on **`2key_dart_sdk` only** — never `better_auth` or `two-key-core` directly.
-
-## Next steps
-
-1. Dual-path in current `billing_dart_sdk` (pure Dart vs Rust) behind a flag  
-2. Move package into this folder and rename to `2key_dart_sdk`  
-3. Point Scomm/secMail at the git path here  
-
-See `docs/proposals/add-rust-core-sdk/tasks.md` §4.
+Production Scomm still uses `billing_dart_sdk` until dual-path cutover.

@@ -33,6 +33,7 @@
 
 ## 4. Dart wrapper (canary)
 
+- [x] 4.0 Scaffold `packages/dart` (`two_key_dart_sdk`) with fixture-aligned verify + API client
 - [ ] 4.1 Add dual-path in `billing_dart_sdk` / `2key_dart_sdk` (pure Dart vs Rust) behind flag
 - [ ] 4.2 Map existing public surface (`BillingSdkConfig`, session, license sync) onto facade
 - [ ] 4.3 Keep Better Auth Dart client internal for Phase A token mint
@@ -44,6 +45,7 @@
 ## 5. CLI
 
 - [x] 5.1 `2key_cli` binary on `2key_core` (stub: version / normalize-url / check-config)
+- [x] 5.1b `verify-license` + `session-demo` commands
 - [ ] 5.2 Headless auth adapter (loopback and/or device/pasted token)
 - [ ] 5.3 OS keyring storage adapter
 - [ ] 5.4 Smoke: configure → auth → license sync against staging
@@ -51,16 +53,17 @@
 ## 6. Browser SDK (`@2key/ts-sdk`)
 
 - [x] 6.1 Scaffold package with hand-maintained `/api/v1` client + claim parser
-- [ ] 6.2 Cookie/redirect auth per `auth-protocol.md`
-- [ ] 6.3 License verify via Web Crypto / jose; same claim names as fixtures
-- [ ] 6.4 Session helpers + portal handoff
-- [ ] 6.5 Conformance suite in CI
+- [x] 6.2 Auth helpers (`authBaseUrl`, `socialSignInUrl` — host does redirect/cookie)
+- [x] 6.3 License verify via Web Crypto; same claim names as fixtures
+- [x] 6.4 Session helpers + portal/shop URL helpers
+- [x] 6.5 Conformance suite in CI (fixture + ES256 roundtrip)
 - [ ] 6.6 Migrate billing-portal to `@2key/ts-sdk` (when ready)
 
 ## 7. Monorepo & naming
 
 - [x] 7.1 Create / migrate to `2key-billing-sdks` layout per design
-- [ ] 7.2 Rename `billing_dart_sdk` → `2key_dart_sdk` (timing per open question)
+- [x] 7.2a Scaffold `packages/dart` as `two_key_dart_sdk` (interim pure-Dart; FRB later)
+- [ ] 7.2 Rename production `billing_dart_sdk` → cut over to monorepo package
 - [x] 7.3 Update parent architecture doc status to Adopted for Rust-core sections
 - [ ] 7.4 App docs: hosts depend on `2key_<lang>_sdk` only
 

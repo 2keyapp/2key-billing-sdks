@@ -12,3 +12,18 @@ export {
   type BillingSubscription,
   type PayingParty,
 } from "./license.js";
+export { verifyLicenseJwt } from "./verify.js";
+export {
+  BrowserSessionManager,
+  localStorageSessionStore,
+  memorySessionStore,
+  type AccountSession,
+  type SessionStore,
+} from "./session.js";
+export {
+  authBaseUrl,
+  portalPathUrl,
+  resolvedPortalBaseUrl,
+  shopUrl,
+  socialSignInUrl,
+} from "./portal.js";
