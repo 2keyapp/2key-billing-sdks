@@ -22,6 +22,36 @@ pub trait Clock: Send + Sync {
     fn unix_seconds(&self) -> i64;
 }
 
+/// Auth adapter — host/wrapper supplies token mint (Better Auth, CLI paste, etc.).
+pub trait AuthPort: Send + Sync {
+    /// Mint or return a billing API access token (`aud=billing`).
+    fn acquire_api_token(&self) -> Result<String>;
+    /// Clear local auth session when supported.
+    fn sign_out(&self) -> Result<()> {
+        Ok(())
+    }
+}
+
+/// Static / pasted token for CLI and tests.
+#[derive(Debug, Clone)]
+pub struct StaticTokenAuth {
+    /// Bearer token value (without `Bearer ` prefix required).
+    pub access_token: String,
+}
+
+impl AuthPort for StaticTokenAuth {
+    fn acquire_api_token(&self) -> Result<String> {
+        let t = self.access_token.trim();
+        if t.is_empty() {
+            return Err(TwoKeyError::new(
+                ErrorCode::Unauthorized,
+                "Access token is empty",
+            ));
+        }
+        Ok(t.to_string())
+    }
+}
+
 /// System clock.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SystemClock;

@@ -159,11 +159,11 @@ Until the monorepo exists, proposal artifacts live in `billing_dart_sdk/docs/pro
 
 ## Open Questions
 
-1. Exact FRB version / whether to vendor generated Dart in-repo vs generate in CI.
-2. Whether Phase B Rust auth covers social OAuth or only email/device/loopback.
+1. ~~Exact FRB version / whether to vendor generated Dart in-repo vs generate in CI.~~ → **Pin 2.11.x**; vendor generated Dart under `packages/dart/lib/src/frb/` when codegen lands.
+2. Whether Phase B Rust auth covers social OAuth or only email/device/loopback. → **Phase A:** pasted/env + host Better Auth; Phase B TBD.
 3. M2M: mTLS-only vs opaque machine tokens for constrained environments (inherits parent architecture open decision).
-4. Package rename timing: `billing_dart_sdk` → `2key_dart_sdk` before or after Rust dual-path.
-5. Publish crates.io for `2key_core` vs git-only until 1.0.
+4. Package rename timing: `billing_dart_sdk` → `2key_dart_sdk` before or after Rust dual-path. → **After** FRB dual-path green on canary.
+5. ~~Publish crates.io for `2key_core` vs git-only until 1.0.~~ → **git-only until 1.0**.
 
 ## Capability checklist (must match across native + browser)
 

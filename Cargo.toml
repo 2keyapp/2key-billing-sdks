@@ -21,3 +21,4 @@ ureq = { version = "2", default-features = false, features = ["json", "native-tl
 base64 = "0.22"
 p256 = { version = "0.13", features = ["ecdsa", "pkcs8", "pem"] }
 rand_core = { version = "0.6", features = ["getrandom"] }
+keyring = "3"

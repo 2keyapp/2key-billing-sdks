@@ -8,3 +8,6 @@ export 'src/errors.dart';
 export 'src/license.dart';
 export 'src/api_client.dart';
 export 'src/url.dart';
+export 'src/session.dart';
+export 'src/portal.dart';
+export 'src/runtime.dart';

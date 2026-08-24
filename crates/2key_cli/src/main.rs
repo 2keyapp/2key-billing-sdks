@@ -1,12 +1,16 @@
 //! 2key Billing CLI — thin entrypoint over two-key-core.
 
+mod keyring_store;
+
 use std::env;
 use std::fs;
 use std::process::ExitCode;
 use two_key_core::{
-    normalize_api_base_url, InMemoryStorage, LicenseVerifier, SdkConfig, SystemClock,
-    TwoKeyClient, VerifyOutcome,
+    normalize_api_base_url, AuthPort, InMemoryStorage, LicenseVerifier, SdkConfig, StaticTokenAuth,
+    SystemClock, TwoKeyClient, VerifyOutcome,
 };
+
+use keyring_store::KeyringStorage;
 
 fn main() -> ExitCode {
     let mut args = env::args().skip(1);
@@ -23,32 +27,17 @@ fn main() -> ExitCode {
             println!("{}", normalize_api_base_url(&url));
             ExitCode::SUCCESS
         }
-        Some("check-config") => {
-            let api = env::var("TWOKEY_API_BASE_URL").unwrap_or_default();
-            let pem = env::var("TWOKEY_PUBLIC_KEY_PEM").unwrap_or_default();
-            let prefix = env::var("TWOKEY_STORAGE_PREFIX").unwrap_or_default();
-            let cfg = SdkConfig {
-                api_base_url: api,
-                public_key_pem: pem,
-                storage_prefix: prefix,
-                portal_base_url: None,
-                shop_path: "/shop".into(),
-                deep_link_scheme: None,
-                license_poll_interval: std::time::Duration::from_secs(6 * 3600),
-            };
-            match cfg.validate() {
-                Ok(c) => {
-                    println!("ok api_base_url={}", c.api_base_url);
-                    ExitCode::SUCCESS
-                }
-                Err(e) => {
-                    eprintln!("{e}");
-                    ExitCode::FAILURE
-                }
+        Some("check-config") => match load_config_from_env() {
+            Ok(c) => {
+                println!("ok api_base_url={}", c.api_base_url);
+                ExitCode::SUCCESS
             }
-        }
+            Err(e) => {
+                eprintln!("{e}");
+                ExitCode::FAILURE
+            }
+        },
         Some("verify-license") => {
-            // two-key verify-license --pem <path> --jwt <path|token>
             let mut pem_path: Option<String> = None;
             let mut jwt_arg: Option<String> = None;
             while let Some(a) = args.next() {
@@ -79,14 +68,7 @@ fn main() -> ExitCode {
                     return ExitCode::FAILURE;
                 }
             };
-            let jwt = if jwt_arg.contains('.') && !std::path::Path::new(&jwt_arg).exists() {
-                jwt_arg
-            } else {
-                match fs::read_to_string(&jwt_arg) {
-                    Ok(s) => s.trim().to_string(),
-                    Err(_) => jwt_arg,
-                }
-            };
+            let jwt = read_token_or_file(&jwt_arg);
 
             let verifier = match LicenseVerifier::from_pem(&pem) {
                 Ok(v) => v,
@@ -111,53 +93,52 @@ fn main() -> ExitCode {
             }
         }
         Some("session-demo") => {
-            // In-memory session save/load smoke (no network).
-            let pem = env::var("TWOKEY_PUBLIC_KEY_PEM").unwrap_or_else(|_| {
-                // Minimal placeholder — validate only needs non-empty; verify not called.
-                "-----BEGIN PUBLIC KEY-----\nMFkwEwYH\n-----END PUBLIC KEY-----\n".into()
-            });
-            let cfg = SdkConfig {
-                api_base_url: env::var("TWOKEY_API_BASE_URL")
-                    .unwrap_or_else(|_| "https://billing.example.com".into()),
-                public_key_pem: pem,
-                storage_prefix: env::var("TWOKEY_STORAGE_PREFIX")
-                    .unwrap_or_else(|_| "two_key_cli".into()),
-                portal_base_url: None,
-                shop_path: "/shop".into(),
-                deep_link_scheme: None,
-                license_poll_interval: std::time::Duration::from_secs(6 * 3600),
+            let cfg = match load_config_from_env() {
+                Ok(c) => c,
+                Err(e) => {
+                    eprintln!("{e}");
+                    eprintln!("hint: set TWOKEY_API_BASE_URL, TWOKEY_PUBLIC_KEY_PEM, TWOKEY_STORAGE_PREFIX");
+                    return ExitCode::FAILURE;
+                }
             };
-            // LicenseVerifier::from_pem will fail on placeholder — use client only if PEM valid.
-            match TwoKeyClient::new(cfg, InMemoryStorage::new(), SystemClock) {
-                Ok(client) => {
-                    let mut s = two_key_core::AccountSession::new("demo");
-                    s.access_token = Some("demo-token".into());
-                    if let Err(e) = client.save_session(&s) {
-                        eprintln!("{e}");
-                        return ExitCode::FAILURE;
-                    }
-                    match client.load_session("demo") {
-                        Ok(Some(loaded)) => {
-                            println!(
-                                "ok session account={} token={}",
-                                loaded.account_key,
-                                loaded.access_token.as_deref().unwrap_or("")
-                            );
-                            ExitCode::SUCCESS
-                        }
-                        Ok(None) => {
-                            eprintln!("session missing after save");
-                            ExitCode::FAILURE
-                        }
-                        Err(e) => {
-                            eprintln!("{e}");
-                            ExitCode::FAILURE
-                        }
-                    }
+            let use_keyring = env::var("TWOKEY_USE_KEYRING")
+                .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+                .unwrap_or(false);
+
+            let result = if use_keyring {
+                let store = KeyringStorage::new("two-key");
+                run_session_demo(cfg, store)
+            } else {
+                run_session_demo(cfg, InMemoryStorage::new())
+            };
+            match result {
+                Ok(msg) => {
+                    println!("{msg}");
+                    ExitCode::SUCCESS
                 }
                 Err(e) => {
                     eprintln!("{e}");
-                    eprintln!("hint: set TWOKEY_PUBLIC_KEY_PEM to a real EC public key PEM");
+                    ExitCode::FAILURE
+                }
+            }
+        }
+        Some("auth-token") => {
+            // Headless Phase A: pasted / env token via AuthPort.
+            let token = env::var("TWOKEY_ACCESS_TOKEN").unwrap_or_else(|_| {
+                args.next().unwrap_or_default()
+            });
+            let auth = StaticTokenAuth {
+                access_token: token,
+            };
+            match auth.acquire_api_token() {
+                Ok(t) => {
+                    println!("ok token_len={}", t.len());
+                    ExitCode::SUCCESS
+                }
+                Err(e) => {
+                    eprintln!("{e}");
+                    eprintln!("usage: TWOKEY_ACCESS_TOKEN=... two-key auth-token");
+                    eprintln!("   or: two-key auth-token <token>");
                     ExitCode::FAILURE
                 }
             }
@@ -167,10 +148,58 @@ fn main() -> ExitCode {
             eprintln!("commands:");
             eprintln!("  version");
             eprintln!("  normalize-url <url>");
-            eprintln!("  check-config   (env: TWOKEY_API_BASE_URL, TWOKEY_PUBLIC_KEY_PEM, TWOKEY_STORAGE_PREFIX)");
+            eprintln!("  check-config");
             eprintln!("  verify-license --pem <public.pem> --jwt <token-or-file>");
-            eprintln!("  session-demo   (env PEM + optional API/prefix)");
+            eprintln!("  session-demo   (TWOKEY_* env; TWOKEY_USE_KEYRING=1 for OS keyring)");
+            eprintln!("  auth-token     (pasted token / TWOKEY_ACCESS_TOKEN)");
             ExitCode::SUCCESS
         }
     }
+}
+
+fn read_token_or_file(jwt_arg: &str) -> String {
+    if jwt_arg.contains('.') && !std::path::Path::new(jwt_arg).exists() {
+        jwt_arg.to_string()
+    } else {
+        fs::read_to_string(jwt_arg)
+            .map(|s| s.trim().to_string())
+            .unwrap_or_else(|_| jwt_arg.to_string())
+    }
+}
+
+fn load_config_from_env() -> Result<SdkConfig, two_key_core::TwoKeyError> {
+    let api = env::var("TWOKEY_API_BASE_URL").unwrap_or_default();
+    let pem = env::var("TWOKEY_PUBLIC_KEY_PEM").unwrap_or_default();
+    let prefix = env::var("TWOKEY_STORAGE_PREFIX").unwrap_or_else(|_| "two_key_cli".into());
+    SdkConfig {
+        api_base_url: api,
+        public_key_pem: pem,
+        storage_prefix: prefix,
+        portal_base_url: None,
+        shop_path: "/shop".into(),
+        deep_link_scheme: None,
+        license_poll_interval: std::time::Duration::from_secs(6 * 3600),
+    }
+    .validate()
+}
+
+fn run_session_demo<S: two_key_core::Storage>(
+    cfg: SdkConfig,
+    store: S,
+) -> Result<String, two_key_core::TwoKeyError> {
+    let client = TwoKeyClient::new(cfg, store, SystemClock)?;
+    let mut s = two_key_core::AccountSession::new("demo");
+    s.access_token = Some("demo-token".into());
+    client.save_session(&s)?;
+    let loaded = client
+        .load_session("demo")?
+        .ok_or_else(|| two_key_core::TwoKeyError::new(
+            two_key_core::ErrorCode::Unknown,
+            "session missing after save",
+        ))?;
+    Ok(format!(
+        "ok session account={} token={}",
+        loaded.account_key,
+        loaded.access_token.as_deref().unwrap_or("")
+    ))
 }

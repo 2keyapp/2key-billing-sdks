@@ -37,4 +37,39 @@ void main() {
       throwsA(isA<TwoKeyException>()),
     );
   });
+
+  test('session roundtrip', () async {
+    final mgr = SessionManager(
+      config: const TwoKeySdkConfig(
+        apiBaseUrl: 'https://billing.example.com',
+        publicKeyPem: 'pem',
+        storagePrefix: 'billing_test',
+      ),
+    );
+    final session = AccountSession(accountKey: 'u1', accessToken: 'tok');
+    await mgr.save(session);
+    final loaded = await mgr.load('u1');
+    expect(loaded?.accessToken, 'tok');
+    await mgr.clear('u1');
+    expect(await mgr.load('u1'), isNull);
+  });
+
+  test('portal urls', () {
+    const cfg = TwoKeySdkConfig(
+      apiBaseUrl: 'https://billing.example.com',
+      publicKeyPem: 'pem',
+      storagePrefix: 'app',
+    );
+    expect(shopUrl(cfg), 'https://billing.example.com/shop');
+    expect(
+      portalPathUrl(cfg, '/subscriptions'),
+      'https://billing.example.com/subscriptions',
+    );
+  });
+
+  test('rust backend flag not wired', () {
+    TwoKeyRuntime.licenseBackend = LicenseBackend.rustCore;
+    expect(TwoKeyRuntime.ensureBackendAvailable, throwsUnsupportedError);
+    TwoKeyRuntime.licenseBackend = LicenseBackend.pureDart;
+  });
 }

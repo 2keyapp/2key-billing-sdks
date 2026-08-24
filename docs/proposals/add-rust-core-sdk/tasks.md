@@ -3,7 +3,8 @@
 ## 0. Approval gate
 
 - [x] 0.1 Review `proposal.md` and `design.md`
-- [ ] 0.2 Resolve open questions in `design.md` (FRB versioning, auth Phase B scope, rename timing, crates.io)
+- [x] 0.2 Resolve open questions in `design.md` (FRB versioning, auth Phase B scope, rename timing, crates.io)
+  - FRB target: **2.11.x**; Auth Phase A = pasted/env + Dart Better Auth; rename deferred; crates.io git-only until 1.0
 - [x] 0.3 Approve this change before any implementation
 
 ## 1. Spec lock (protocol)
@@ -27,14 +28,16 @@
 ## 3. Bindings facade
 
 - [x] 3.1 Define stable Rust facade module intended for FFI (`facade::TwoKeyClient`)
-- [ ] 3.2 Choose and pin FRB version; generate Dart bindings for facade
+- [x] 3.1b JSON/string `ffi::*` helpers for FRB/UniFFI (`ffi_verify_license_json`, …)
+- [x] 3.2 Pin FRB target **2.11.x** in `bindings/README.md` (codegen not generated yet)
 - [ ] 3.3 (Later) UniFFI scaffolding for Kotlin/Swift from same facade
 - [ ] 3.4 CI: build `2key_core` + Dart bindings on Linux/macOS/Windows targets as needed
 
 ## 4. Dart wrapper (canary)
 
 - [x] 4.0 Scaffold `packages/dart` (`two_key_dart_sdk`) with fixture-aligned verify + API client
-- [ ] 4.1 Add dual-path in `billing_dart_sdk` / `2key_dart_sdk` (pure Dart vs Rust) behind flag
+- [x] 4.0b Session manager + portal helpers + `LicenseBackend` dual-path flag
+- [ ] 4.1 Wire `rustCore` path via FRB to `ffi_*` / facade
 - [ ] 4.2 Map existing public surface (`BillingSdkConfig`, session, license sync) onto facade
 - [ ] 4.3 Keep Better Auth Dart client internal for Phase A token mint
 - [ ] 4.4 Host still supplies `AuthSessionLauncher` + storage
@@ -46,8 +49,8 @@
 
 - [x] 5.1 `2key_cli` binary on `2key_core` (stub: version / normalize-url / check-config)
 - [x] 5.1b `verify-license` + `session-demo` commands
-- [ ] 5.2 Headless auth adapter (loopback and/or device/pasted token)
-- [ ] 5.3 OS keyring storage adapter
+- [x] 5.2 Headless auth adapter (pasted / env token via `StaticTokenAuth` + `auth-token`)
+- [x] 5.3 OS keyring storage adapter (`KeyringStorage`, `TWOKEY_USE_KEYRING=1`)
 - [ ] 5.4 Smoke: configure → auth → license sync against staging
 
 ## 6. Browser SDK (`@2key/ts-sdk`)

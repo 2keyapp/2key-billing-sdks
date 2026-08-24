@@ -13,3 +13,4 @@ path = "src/main.rs"
 
 [dependencies]
 two-key-core = { path = "../2key_core" }
+keyring = { workspace = true }

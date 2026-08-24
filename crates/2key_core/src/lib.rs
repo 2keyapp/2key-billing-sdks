@@ -9,6 +9,7 @@ pub mod api;
 pub mod config;
 pub mod error;
 pub mod facade;
+pub mod ffi;
 pub mod license;
 pub mod models;
 pub mod ports;
@@ -16,12 +17,14 @@ pub mod session;
 pub mod url;
 
 pub use config::SdkConfig;
-pub use error::{ErrorCode, TwoKeyError};
+pub use error::{ErrorCode, Result, TwoKeyError};
 pub use facade::TwoKeyClient;
 pub use license::{LicenseVerifier, VerifyOutcome};
 pub use models::{
     BillingSubscription, LicensePayload, PayingParty, Plan, SubscriptionStatus,
 };
-pub use ports::{Clock, InMemoryStorage, Storage, SystemClock};
+pub use ports::{
+    AuthPort, Clock, InMemoryStorage, StaticTokenAuth, Storage, SystemClock,
+};
 pub use session::{AccountSession, SessionManager};
 pub use url::normalize_api_base_url;
