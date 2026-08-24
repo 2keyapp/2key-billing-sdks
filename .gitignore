@@ -1,0 +1,28 @@
+﻿# Rust
+/target/
+**/*.rs.bk
+
+# Node / TS
+node_modules/
+packages/ts/dist/
+packages/ts/*.tsbuildinfo
+.npm/
+
+# Dart / Flutter
+packages/dart/.dart_tool/
+packages/dart/build/
+packages/dart/.packages
+packages/dart/pubspec.lock
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Secrets
+*.pem
+!conformance/fixtures/**/*.pem
+.env
+.env.*
