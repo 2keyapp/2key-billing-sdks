@@ -1,18 +1,20 @@
 {
-  "version": "0.1.0",
-  "tag": "v0.1.0",
+  "version": "0.1.1",
+  "tag": "v0.1.1",
   "repo": "2keyapp/2key-core-sdk",
-  "note": "SHA256 pins for 2key-core-sdk release v0.1.0. linux-aarch64 assets were not published in this release.",
+  "note": "SHA256 pins for 2key-core-sdk release v0.1.1 (includes linux aarch64 native ARM builds).",
   "assets": {
     "two-key-linux-x86_64": { "sha256": "2f07033fe58d0f01dee105ba7206f8ea4a7409bda1ccddc78da992608a061d73" },
+    "two-key-linux-aarch64": { "sha256": "2552873334b2a22905a8acdc9288f92de0de5cb98f7f2983689a7fa2f30f41b0" },
     "two-key-macos-x86_64": { "sha256": "8e82e77de2c0e6041560f9590377f7b7805bdf54a3a8199fa4cc0a06e3f17e52" },
     "two-key-macos-aarch64": { "sha256": "a6bc508e3784576eae5020a951510ce3e411fb04583ac155d90f201d53201820" },
-    "two-key-windows-x86_64.exe": { "sha256": "c4f4a8dfb594eecc78bddbb69cfd18bf2433de00bfe3d4088a639042fc8db019" },
-    "two-key-windows-aarch64.exe": { "sha256": "aa9bfdc375e7c015cc84763ae63d2b5d0e8b8fedb5e956ab56740db72fb08e94" },
+    "two-key-windows-x86_64.exe": { "sha256": "bf1248d6da3eccf28b34f4ef2b8fe63073d8563df6023bf7a4b653daf24edccd" },
+    "two-key-windows-aarch64.exe": { "sha256": "128a48658755525cee7f66f840a90cb8cde537e933f1efeb217c3e4af3828924" },
     "libtwo_key_core-linux-x86_64.so": { "sha256": "5dfb99a13789e6feafa5ea191fb8c229e3cb20d2fe417598b33005c297f1065f" },
+    "libtwo_key_core-linux-aarch64.so": { "sha256": "04cfd2c960dbcd63169e83bdd34079ed0f86ee057082a847c91a4a03b9bbec2c" },
     "libtwo_key_core-macos-x86_64.dylib": { "sha256": "c2a57ec16e313c2aac31580549c37bdfb1007d13f3b1dcbd948f35ed91df979c" },
     "libtwo_key_core-macos-aarch64.dylib": { "sha256": "a700ed5e6250d94ab31ae56a3032b613eefe162013b63225bc955a728989f064" },
-    "two_key_core-windows-x86_64.dll": { "sha256": "99d4cc42f58b42345e842a2f6058872cdcab399df58af5f23b6d38ce3794fbe3" },
-    "two_key_core-windows-aarch64.dll": { "sha256": "c56b397d26288a172f63149705a1ce97b3e3009e91ea05bd6d7b05c8695b13c4" }
+    "two_key_core-windows-x86_64.dll": { "sha256": "7c69e8078c1879b508327ae1876eb9a296769e5fe738c5e8d0a1ede13b7a2d86" },
+    "two_key_core-windows-aarch64.dll": { "sha256": "ec64fc5e0e71992449f301622e94353441b7e7d95338bd3e59f6434408e549df" }
   }
 }

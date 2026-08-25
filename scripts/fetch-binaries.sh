@@ -39,7 +39,7 @@ if command -v jq >/dev/null 2>&1; then
   TAG="${TAG:-$(jq -r .tag "$LOCK")}"
   REPO="${REPO:-$(jq -r .repo "$LOCK")}"
 else
-  TAG="${TAG:-v0.1.0}"
+  TAG="${TAG:-v0.1.1}"
   REPO="${REPO:-2keyapp/2key-core-sdk}"
 fi
 
