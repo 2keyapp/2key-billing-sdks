@@ -1,15 +1,15 @@
 import 'dart:convert';
 
-import 'package:billing_dart_sdk/src/api/billing_api_client.dart';
-import 'package:billing_dart_sdk/src/catalog/plan_catalog.dart';
-import 'package:billing_dart_sdk/src/config/billing_sdk_config.dart';
-import 'package:billing_dart_sdk/src/keys/default_public_key.dart';
-import 'package:billing_dart_sdk/src/keys/public_key_loader.dart';
-import 'package:billing_dart_sdk/src/keys/public_key_loader_asset.dart';
-import 'package:billing_dart_sdk/src/models/billing_stats.dart';
-import 'package:billing_dart_sdk/src/models/billing_token_error.dart';
-import 'package:billing_dart_sdk/src/models/billing_token_payload.dart';
-import 'package:billing_dart_sdk/src/verification/token_verifier.dart';
+import 'package:two_key_dart_sdk/src/api/billing_api_client.dart';
+import 'package:two_key_dart_sdk/src/catalog/plan_catalog.dart';
+import 'package:two_key_dart_sdk/src/config/billing_sdk_config.dart';
+import 'package:two_key_dart_sdk/src/keys/default_public_key.dart';
+import 'package:two_key_dart_sdk/src/keys/public_key_loader.dart';
+import 'package:two_key_dart_sdk/src/keys/public_key_loader_asset.dart';
+import 'package:two_key_dart_sdk/src/models/billing_stats.dart';
+import 'package:two_key_dart_sdk/src/models/billing_token_error.dart';
+import 'package:two_key_dart_sdk/src/models/billing_token_payload.dart';
+import 'package:two_key_dart_sdk/src/verification/token_verifier.dart';
 
 /// Client SDK for **using-party apps**: auth token → license sync → offline entitlements.
 ///
