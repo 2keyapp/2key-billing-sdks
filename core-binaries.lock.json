@@ -2,7 +2,7 @@
   "version": "0.1.1",
   "tag": "v0.1.1",
   "repo": "2keyapp/2key-core-sdk",
-  "note": "SHA256 pins for 2key-core-sdk release v0.1.1 (includes linux aarch64 native ARM builds).",
+  "note": "SHA256 pins for 2key-core-sdk release v0.1.1 (includes linux-aarch64 via ubuntu-24.04-arm).",
   "assets": {
     "two-key-linux-x86_64": { "sha256": "2f07033fe58d0f01dee105ba7206f8ea4a7409bda1ccddc78da992608a061d73" },
     "two-key-linux-aarch64": { "sha256": "2552873334b2a22905a8acdc9288f92de0de5cb98f7f2983689a7fa2f30f41b0" },
