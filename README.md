@@ -46,6 +46,8 @@ cd packages/dart && dart pub get && dart test
 ## Docs
 
 - [Architecture (Binary Private Core)](docs/architecture.md)
+- [Host integration](docs/host-integration.md)
+- [Portal → `@2key/ts-sdk` migration](docs/portal-migration.md)
 - [CLI](docs/cli.md)
 - [Auth protocol](docs/auth-protocol.md)
 - [SDK conformance](docs/sdk-conformance.md)

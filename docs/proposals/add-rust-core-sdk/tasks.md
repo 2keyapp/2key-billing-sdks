@@ -31,7 +31,7 @@
 - [x] 3.1b JSON/string `ffi::*` helpers for FRB/UniFFI (`ffi_verify_license_json`, …)
 - [x] 3.1c C ABI (`c_api.rs`) + `cdylib` crate type
 - [x] 3.2 Pin FRB target **2.11.x**; interim **dart:ffi** wired to C ABI
-- [ ] 3.3 (Later) UniFFI scaffolding for Kotlin/Swift from same facade
+- [x] 3.3 (Later) UniFFI scaffolding docs — `bindings/uniffi/` + private `docs/UNIFFI.md` (IDL/codegen still TBD)
 - [x] 3.4 CI builds `two-key-core` cdylib before Dart FFI tests
 
 ## 4. Dart wrapper (canary)
@@ -61,7 +61,7 @@
 - [x] 6.3 License verify via Web Crypto; same claim names as fixtures
 - [x] 6.4 Session helpers + portal/shop URL helpers
 - [x] 6.5 Conformance suite in CI (fixture + ES256 roundtrip)
-- [ ] 6.6 Migrate billing-portal to `@2key/ts-sdk` (when ready)
+- [x] 6.6 Portal-ready surface (`ensureBillingContext`, `fetchPlans`, `acquireApiToken`, `portalHandoffUrl`, `reportUsage`) + [portal-migration.md](../../portal-migration.md) checklist (SPA cutover when `billing-portal` repo available)
 
 ## 7. Monorepo & naming
 
@@ -69,11 +69,11 @@
 - [x] 7.2a Scaffold `packages/dart` as `two_key_dart_sdk` (interim pure-Dart; FRB later)
 - [ ] 7.2 Rename production `billing_dart_sdk` → cut over to monorepo package
 - [x] 7.3 Update parent architecture doc status to Adopted for Rust-core sections
-- [ ] 7.4 App docs: hosts depend on `2key_<lang>_sdk` only
+- [x] 7.4 App docs: hosts depend on `2key_<lang>_sdk` only — see [host-integration.md](../../host-integration.md)
 
 ## 8. Later languages / M2M
 
 - [ ] 8.1 UniFFI Kotlin SDK
 - [ ] 8.2 UniFFI Swift SDK
-- [ ] 8.3 Usage event APIs in core + wrappers when server ships
+- [x] 8.3 Usage event APIs in core + wrappers (OpenAPI `POST /usage/report`; `two-key-core` + `@2key/ts-sdk`; mTLS still stub)
 - [ ] 8.4 mTLS / machine-token helpers in CLI / node first

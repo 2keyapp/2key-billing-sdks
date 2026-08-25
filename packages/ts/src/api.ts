@@ -1,4 +1,5 @@
 import { normalizeApiBaseUrl, type SdkConfig, validateConfig } from "./config.js";
+import { parsePlan, type Plan } from "./catalog.js";
 import { TwoKeyError } from "./errors.js";
 import type { LicensePayload } from "./license.js";
 import { parseLicenseClaims } from "./license.js";
@@ -6,6 +7,16 @@ import { parseLicenseClaims } from "./license.js";
 export type SyncResult =
   | { kind: "success"; signedToken: string; etag?: string }
   | { kind: "not_modified"; etag?: string };
+
+export type BootstrapResult =
+  | { kind: "success"; data: Record<string, unknown> }
+  | { kind: "failure"; message: string; status?: number };
+
+export type FetchPlansQuery = {
+  productId?: number;
+  billingInterval?: "monthly" | "annual" | string;
+  includeInactive?: boolean;
+};
 
 function unwrapData(body: unknown): Record<string, unknown> {
   if (body && typeof body === "object" && "data" in body) {
@@ -15,12 +26,25 @@ function unwrapData(body: unknown): Record<string, unknown> {
   return (body ?? {}) as Record<string, unknown>;
 }
 
+function unwrapList(body: unknown): unknown[] {
+  if (!body || typeof body !== "object") return [];
+  const o = body as Record<string, unknown>;
+  if (Array.isArray(o.data)) return o.data;
+  if (Array.isArray(o.items)) return o.items;
+  if (o.data && typeof o.data === "object") {
+    const d = o.data as Record<string, unknown>;
+    if (Array.isArray(d.items)) return d.items;
+    if (Array.isArray(d.plans)) return d.plans;
+  }
+  return [];
+}
+
 function bearer(token: string): string {
   const t = token.trim();
   return t.toLowerCase().startsWith("bearer ") ? t : `Bearer ${t}`;
 }
 
-/** Minimal browser `/api/v1` client (cookie session via credentials: include). */
+/** Browser `/api/v1` client (cookie session via credentials: include where needed). */
 export class BillingApiClient {
   private readonly origin: string;
 
@@ -92,7 +116,62 @@ export class BillingApiClient {
     throw new TwoKeyError("unknown", `Billing request failed (HTTP ${res.status}).`);
   }
 
-  /** Decode claims only — call after Web Crypto ES256 verify (Phase 6.3). */
+  /** `GET /api/v1/subscriptions/me` — bootstrap billing context. */
+  async ensureBillingContext(opts: { accessToken: string }): Promise<BootstrapResult> {
+    if (!opts.accessToken.trim()) {
+      return { kind: "failure", message: "Authorization token is required." };
+    }
+    let res: Response;
+    try {
+      res = await this.fetchImpl(this.url("api/v1/subscriptions/me"), {
+        method: "GET",
+        headers: { Authorization: bearer(opts.accessToken) },
+        credentials: "include",
+      });
+    } catch (e) {
+      throw new TwoKeyError("network", "Network error talking to billing server", String(e));
+    }
+    if (res.status === 200) {
+      const body = await res.json();
+      return { kind: "success", data: unwrapData(body) };
+    }
+    if (res.status === 401 || res.status === 403) {
+      return {
+        kind: "failure",
+        message: `Billing bootstrap failed (HTTP ${res.status}).`,
+        status: res.status,
+      };
+    }
+    return {
+      kind: "failure",
+      message: `Billing bootstrap failed (HTTP ${res.status}).`,
+      status: res.status,
+    };
+  }
+
+  /** `GET /api/v1/plans` — public catalog (no auth). */
+  async fetchPlans(query: FetchPlansQuery = {}): Promise<Plan[]> {
+    const u = new URL(this.url("api/v1/plans"));
+    if (query.productId != null) u.searchParams.set("productId", String(query.productId));
+    if (query.billingInterval) u.searchParams.set("billingInterval", query.billingInterval);
+    if (query.includeInactive) u.searchParams.set("includeInactive", "true");
+
+    let res: Response;
+    try {
+      res = await this.fetchImpl(u.toString(), { method: "GET", credentials: "include" });
+    } catch (e) {
+      throw new TwoKeyError("network", "Network error fetching plans", String(e));
+    }
+    if (res.status !== 200) {
+      return [];
+    }
+    const body = await res.json();
+    return unwrapList(body)
+      .filter((row): row is Record<string, unknown> => !!row && typeof row === "object")
+      .map(parsePlan);
+  }
+
+  /** Decode claims only — call after Web Crypto ES256 verify. */
   parseClaims(claims: unknown): LicensePayload {
     return parseLicenseClaims(claims);
   }

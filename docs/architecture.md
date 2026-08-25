@@ -67,8 +67,8 @@ This document defines how 2key Billing is structured across repositories so that
 |---------|--------|
 | `billing_dart_sdk` | **`2key_dart_sdk`** |
 | `BillingAuthClient`, `BillingSession`, `BillingSdk` | Keep names initially for compatibility **or** alias under `TwoKey*` with deprecation period (decide in Phase 1) |
-| `@better-auth/flutter` | `@2key/auth-native` (or keep path, change package name) |
-| `packages/flutter/dart` (`better_auth`) | `packages/clients/dart` — still low-level; **not** imported by host apps |
+| `@better-auth/flutter` | **`@2key/auth-native`** (`packages/native`; deprecated shim `packages/flutter`) |
+| `packages/flutter/dart` (`better_auth`) | **`packages/clients/dart`** — still low-level; **not** imported by host apps |
 | secMail / Scomm dep `billing_dart_sdk` | `2key_dart_sdk` |
 
 ---
@@ -582,24 +582,26 @@ During migration, extract fixtures from current Dart tests first, then implement
 
 ### Phase 4 — Browser SDK
 
-- [ ] Implement **`2key_ts_sdk`** against OpenAPI + fixtures (parallel to Rust OK).
-- [ ] Migrate billing-portal to `2key_ts_sdk`.
+- [x] Implement **`2key_ts_sdk`** against OpenAPI + fixtures (parallel to Rust OK).
+- [x] Portal-ready SDK surface + [portal-migration.md](portal-migration.md) (SPA cutover when portal repo available).
 
 ### Phase 5 — Auth fork hygiene
 
-- [ ] Rename `@better-auth/flutter` → `@2key/auth-native`.
-- [ ] Relocate Dart client path under `packages/clients/dart`.
-- [ ] Enable `upstream-sync` workflow.
+- [x] Rename `@better-auth/flutter` → `@2key/auth-native` (`packages/native`; shim at `packages/flutter`).
+- [x] Relocate Dart client path under `packages/clients/dart`.
+- [x] Enable `upstream-sync` workflow + `docs/UPSTREAM_SYNC.md`.
+- [ ] Publish `release-native` tip and bump `2key-billing` / Dart SDK pins after push.
 
 ### Phase 6 — Usage & mTLS product APIs
 
-- [ ] Ship `/api/v1/usage*` in private core.
-- [ ] Ship mTLS enrollment/verify in billing-mtls.
-- [ ] Extend OpenAPI + **`2key_core` first**, then wrappers + TS.
+- [x] Document live `POST /api/v1/usage/report` in OpenAPI; client helpers in core + `@2key/ts-sdk`.
+- [ ] Ship mTLS enrollment/verify in billing-mtls (stub: `2key-billing/docs/billing-mtls-stub.md`).
+- [ ] Extend wrappers + CLI for mTLS when server ships.
 
 ### Phase 7 — Additional languages
 
-- [ ] Kotlin / Swift via UniFFI; Python as needed — always against conformance suite.
+- [x] UniFFI scaffold docs (`bindings/uniffi/`, core `docs/UNIFFI.md`).
+- [ ] Kotlin / Swift packages against conformance suite.
 
 ---
 

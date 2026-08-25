@@ -1,4 +1,9 @@
-export { BillingApiClient, type SyncResult } from "./api.js";
+export {
+  BillingApiClient,
+  type SyncResult,
+  type BootstrapResult,
+  type FetchPlansQuery,
+} from "./api.js";
 export {
   normalizeApiBaseUrl,
   validateConfig,
@@ -27,3 +32,14 @@ export {
   shopUrl,
   socialSignInUrl,
 } from "./portal.js";
+export {
+  acquireApiToken,
+  portalHandoffUrl,
+  type AcquireApiTokenResult,
+} from "./auth.js";
+export { parsePlan, type Plan } from "./catalog.js";
+export {
+  reportUsage,
+  type UsageReportRequest,
+  type UsageReportResult,
+} from "./usage.js";

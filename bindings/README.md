@@ -9,3 +9,7 @@ export TWOKEY_CORE_LIB="$PWD/bin/libtwo_key_core.so"   # Linux example
 ```
 
 Rust **source** is not in this repository. See `crates/README.md` and `docs/cli.md`.
+
+## UniFFI (Kotlin / Swift)
+
+See [uniffi/README.md](uniffi/README.md) — scaffold only until private core adds IDL.

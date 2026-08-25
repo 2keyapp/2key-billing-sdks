@@ -98,13 +98,94 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/Plan"
+  /api/v1/usage/report:
+    post:
+      operationId: reportUsage
+      summary: Ingest a usage event (reporter / M2M — not end-user session)
+      description: |
+        Live server path used by relays and machine reporters.
+        Auth is `USAGE_REPORTER_TOKEN` (Bearer), not a user billing JWT.
+        mTLS enrollment APIs are not yet public; see architecture Phase 6.
+      security:
+        - reporterBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UsageReportRequest"
+      responses:
+        "200":
+          description: Accepted (or duplicate idempotency key)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/UsageReportResult"
+        "400":
+          description: Missing required fields
+        "401":
+          description: Invalid reporter token
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    reporterBearer:
+      type: http
+      scheme: bearer
+      description: USAGE_REPORTER_TOKEN (or auth secret fallback on server)
   schemas:
+    UsageReportRequest:
+      type: object
+      required: [meter_key, using_party, paying_party, idempotency_key]
+      properties:
+        meter_key:
+          type: string
+        meterKey:
+          type: string
+        using_party:
+          type: string
+        usingParty:
+          type: string
+        paying_party:
+          type: string
+        payingParty:
+          type: string
+        idempotency_key:
+          type: string
+        idempotencyKey:
+          type: string
+        reporter_type:
+          type: string
+          default: relay
+        quantity:
+          oneOf:
+            - type: string
+            - type: number
+        dimensions:
+          type: object
+          additionalProperties: true
+    UsageReportResult:
+      type: object
+      properties:
+        accepted:
+          type: boolean
+        duplicate:
+          type: boolean
+        remaining:
+          type: string
+          nullable: true
+        generation:
+          type: integer
+          nullable: true
+        actions:
+          type: array
+          items:
+            type: string
     Plan:
       type: object
       required: [id, name, billing_interval, base_price, currency]
