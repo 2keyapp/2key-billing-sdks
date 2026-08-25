@@ -590,7 +590,7 @@ During migration, extract fixtures from current Dart tests first, then implement
 - [x] Rename `@better-auth/flutter` → `@2key/auth-native` (`packages/native`; shim at `packages/flutter`).
 - [x] Relocate Dart client path under `packages/clients/dart`.
 - [x] Enable `upstream-sync` workflow + `docs/UPSTREAM_SYNC.md`.
-- [ ] Publish `release-native` tip and bump `2key-billing` / Dart SDK pins after push.
+- [x] Publish `release-native` tip and bump `2key-billing` / Dart SDK pins after push.
 
 ### Phase 6 — Usage & mTLS product APIs
 
