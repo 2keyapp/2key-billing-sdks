@@ -1,24 +1,24 @@
 # 2key_dart_sdk (`two_key_dart_sdk`)
 
-Dart / Flutter host-facing SDK for 2key Billing.
+Canonical Flutter/Dart SDK for 2key Billing. **Replaces `billing_dart_sdk`.**
 
-**Dual-path license verify:**
-
-| Backend | How |
-|---------|-----|
-| `LicenseBackend.pureDart` (default) | `dart_jsonwebtoken` |
-| `LicenseBackend.rustCore` | `dart:ffi` → `two_key_core` cdylib |
-
-```bash
-cargo build -p two-key-core
-# optional: export TWOKEY_CORE_LIB=/path/to/libtwo_key_core.so
+```yaml
+dependencies:
+  two_key_dart_sdk:
+    git:
+      url: https://github.com/2keyapp/2key-billing-sdks.git
+      path: packages/dart
+      ref: <PINNED_SHA>
 ```
 
 ```dart
-TwoKeyRuntime.licenseBackend = LicenseBackend.rustCore;
-final payload = verifyLicenseJwt(jwt, pem);
+import 'package:two_key_dart_sdk/two_key_dart_sdk.dart';
+// temporary:
+import 'package:two_key_dart_sdk/billing_dart_sdk.dart';
 ```
 
-Host apps depend on **this package only** — never `better_auth` or `two-key-core` crates directly.
+Host apps depend on **this package only** — never `better_auth` or private `two-key-core` source.
 
-Production Scomm still uses `billing_dart_sdk` until dual-path cutover + Better Auth wiring.
+Native license path can use FFI against a prebuilt core binary from **`2key-core-sdk`** Releases (`scripts/fetch-binaries.*` + `TWOKEY_CORE_LIB`).
+
+See [retire-billing-dart-sdk.md](../../docs/retire-billing-dart-sdk.md).

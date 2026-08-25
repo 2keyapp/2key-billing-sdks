@@ -1,4 +1,8 @@
-﻿# Rust
+﻿# Fetched core / CLI binaries (Binary Private Core)
+/bin/
+!bin/.gitkeep
+
+# Rust (local only — source lives in private 2key-core-sdk)
 /target/
 **/*.rs.bk
 
@@ -24,5 +28,6 @@ Thumbs.db
 # Secrets
 *.pem
 !conformance/fixtures/**/*.pem
+!packages/dart/keys/**/*.pem
 .env
 .env.*

@@ -1,37 +1,56 @@
 # 2key-billing-sdks
 
-Public monorepo for **2key Billing** client SDKs.
+**Public** monorepo for 2key Billing client distribution.
+
+## Priority: desktop CLI
+
+The primary deliverable for operators and desktop integration is the **`two-key` CLI** on **Windows, macOS, and Linux**.
+
+```bash
+# macOS / Linux
+./scripts/fetch-binaries.sh
+./bin/two-key version
+
+# Windows (PowerShell)
+.\scripts\fetch-binaries.ps1
+.\bin\two-key.exe version
+```
+
+Binaries are built from the **private** [`2key-core-sdk`](https://github.com/2keyapp/2key-core-sdk) repo (Binary Private Core). This public repo does **not** ship `two-key-core` source.
 
 | Component | Path | Role |
 |-----------|------|------|
-| **two-key-core** (`2key_core`) | `crates/2key_core` | Native behavioral reference (Rust) |
-| **two-key** CLI | `crates/2key_cli` | Thin CLI over core |
-| **@2key/ts-sdk** | `packages/ts` | Browser behavioral reference |
-| **2key_dart_sdk** | `packages/dart` | Flutter wrapper (migration in progress) |
+| **CLI install** | `scripts/fetch-binaries.*`, `bin/` | Download pinned `two-key` + optional `libtwo_key_core` |
+| **Binary lock** | `core-binaries.lock.json` | Exact version + checksums |
+| **@2key/ts-sdk** | `packages/ts` | Browser SDK (protocol parity) |
+| **2key_dart_sdk** | `packages/dart` | Flutter/Dart SDK (canonical; replaces `billing_dart_sdk`) |
 | OpenAPI | `openapi/2key-billing.yaml` | `/api/v1` contract |
 | Conformance | `conformance/fixtures` | Shared JWT claim fixtures |
 
-Host apps depend on **`2key_<lang>_sdk` only** — never on Better Auth or `two-key-core` directly.
+Host apps depend on **`2key_<lang>_sdk` only** — never on Better Auth or private core source.
 
 ## Quick start
 
 ```bash
-# Rust core
-cargo test -p two-key-core
-cargo run -p two-key-cli -- version
+# CLI (recommended)
+./scripts/fetch-binaries.sh   # or fetch-binaries.ps1 on Windows
+./bin/two-key --help
 
 # Browser SDK
 cd packages/ts && npm install && npm test && npm run build
+
+# Dart SDK
+cd packages/dart && dart pub get && dart test
 ```
 
 ## Docs
 
-- [Architecture](docs/architecture.md)
+- [Architecture (Binary Private Core)](docs/architecture.md)
+- [CLI](docs/cli.md)
 - [Auth protocol](docs/auth-protocol.md)
 - [SDK conformance](docs/sdk-conformance.md)
-- [Error codes](docs/error-codes.md)
-- [Rust-core proposal](docs/proposals/add-rust-core-sdk/proposal.md)
+- [Retire `billing_dart_sdk`](docs/retire-billing-dart-sdk.md)
 
 ## Design north star
 
-**Rust owns native billing truth; TypeScript owns browser truth; OpenAPI + fixtures own the contract; wrappers only adapt storage, OAuth chrome, and language idioms.**
+**Private `2key-core-sdk` owns native truth and releases binaries; this repo distributes the CLI + language wrappers; TypeScript owns browser truth; OpenAPI + fixtures own the contract.**

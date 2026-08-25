@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "tag": "v0.1.0",
+  "repo": "2keyapp/2key-core-sdk",
+  "note": "Update sha256 after first private release. Until then fetch scripts fail closed unless TWOKEY_CORE_DEV_DIR points at a local 2key-core-sdk build.",
+  "assets": {
+    "two-key-linux-x86_64": { "sha256": "PENDING" },
+    "two-key-linux-aarch64": { "sha256": "PENDING" },
+    "two-key-macos-x86_64": { "sha256": "PENDING" },
+    "two-key-macos-aarch64": { "sha256": "PENDING" },
+    "two-key-windows-x86_64.exe": { "sha256": "PENDING" },
+    "two-key-windows-aarch64.exe": { "sha256": "PENDING" },
+    "libtwo_key_core-linux-x86_64.so": { "sha256": "PENDING" },
+    "libtwo_key_core-linux-aarch64.so": { "sha256": "PENDING" },
+    "libtwo_key_core-macos-x86_64.dylib": { "sha256": "PENDING" },
+    "libtwo_key_core-macos-aarch64.dylib": { "sha256": "PENDING" },
+    "two_key_core-windows-x86_64.dll": { "sha256": "PENDING" },
+    "two_key_core-windows-aarch64.dll": { "sha256": "PENDING" }
+  }
+}

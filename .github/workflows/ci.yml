@@ -6,15 +6,16 @@ on:
   pull_request:
 
 jobs:
-  rust:
+  cli-fetch-docs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Test two-key-core
-        run: cargo test -p two-key-core
-      - name: Build CLI
-        run: cargo build -p two-key-cli
+      - name: Fetch scripts present
+        run: |
+          test -f scripts/fetch-binaries.sh
+          test -f scripts/fetch-binaries.ps1
+          test -f core-binaries.lock.json
+          test -f docs/cli.md
 
   typescript:
     runs-on: ubuntu-latest
@@ -34,14 +35,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Build two-key-core cdylib
-        run: cargo build -p two-key-core
-      - uses: dart-lang/setup-dart@v1
-      - name: Dart tests
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Flutter tests
         working-directory: packages/dart
         run: |
-          dart pub get
-          dart test
-        env:
-          TWOKEY_CORE_LIB: ${{ github.workspace }}/target/debug/libtwo_key_core.so
+          flutter pub get
+          flutter test
