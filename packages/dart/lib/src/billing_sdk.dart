@@ -10,12 +10,11 @@ import 'package:two_key_dart_sdk/src/keys/public_key_loader_asset.dart';
 import 'package:two_key_dart_sdk/src/models/billing_stats.dart';
 import 'package:two_key_dart_sdk/src/models/billing_token_error.dart';
 import 'package:two_key_dart_sdk/src/models/billing_token_payload.dart';
-import 'package:two_key_dart_sdk/src/verification/token_verifier.dart';
 
 /// Client SDK for **using-party apps**: auth token → license sync → offline entitlements.
 ///
-/// License verify/sync prefer [LicenseBackend.rustCore] (`two-key-core` via FRB
-/// wire) when the native library is present; otherwise pure Dart.
+/// License verify/sync/bootstrap always use **`two-key-core`** via the FRB wire
+/// ([RustBillingCore]). Plan catalog remains Dart HTTP ([BillingApiClient]).
 ///
 /// Use [BillingAuthClient] for login and [BillingSession] for persisted state.
 class BillingSdk {
@@ -23,7 +22,6 @@ class BillingSdk {
 
   static String? _billingApiBaseUrl;
   static String? _publicKeyPem;
-  static TokenVerifier? _verifier;
   static BillingApiClient? _apiClient;
   static BillingSdkConfig? _config;
   static RustBillingCore? _rust;
@@ -35,9 +33,6 @@ class BillingSdk {
 
   /// Last config applied via [configureFrom], if any.
   static BillingSdkConfig? get config => _config;
-
-  /// Active license backend after [configure] / [configureFrom].
-  static LicenseBackend get licenseBackend => RustBillingCore.resolveBackend();
 
   static String _pemFingerprint(String pem) {
     const begin = '-----BEGIN PUBLIC KEY-----';
@@ -55,11 +50,8 @@ class BillingSdk {
     String? billingApiBaseUrl,
     String? publicKeyPem,
     String? publicKeyPath,
-    LicenseBackend? licenseBackend,
+    String? coreLibraryPath,
   }) {
-    if (licenseBackend != null) {
-      RustBillingCore.preferredBackend = licenseBackend;
-    }
     if (billingApiBaseUrl != null) _billingApiBaseUrl = billingApiBaseUrl;
     if (publicKeyPem != null) {
       _publicKeyPem = publicKeyPem;
@@ -69,15 +61,14 @@ class BillingSdk {
       _publicKeyPem = loadPublicKeyFromPath(publicKeyPath.trim());
       _loadedKeyFingerprint = _pemFingerprint(_publicKeyPem!);
     }
-    _verifier = null;
     _apiClient = null;
-    _rust = RustBillingCore.tryOpen();
+    _rust = RustBillingCore.tryOpen(coreLibraryPath);
   }
 
   /// Applies [BillingSdkConfig] (API base URL + license public key).
   static Future<void> configureFrom(
     BillingSdkConfig config, {
-    LicenseBackend? licenseBackend,
+    String? coreLibraryPath,
   }) async {
     _config = config;
     var pem = config.publicKeyPem?.trim();
@@ -94,7 +85,7 @@ class BillingSdk {
     configure(
       billingApiBaseUrl: config.apiBaseUrl,
       publicKeyPem: pem,
-      licenseBackend: licenseBackend,
+      coreLibraryPath: coreLibraryPath,
     );
   }
 
@@ -109,22 +100,24 @@ class BillingSdk {
   /// Test-only configure that installs the SDK unit-test public key when
   /// [publicKeyPem] is omitted. Production hosts must use [configure] /
   /// [configureFrom] with their real license public key.
+  ///
+  /// Requires a loadable `two_key_core` native library.
   static void configureForTesting({
     String? billingApiBaseUrl,
     String? publicKeyPem,
-    LicenseBackend licenseBackend = LicenseBackend.pureDart,
+    String? coreLibraryPath,
   }) {
     configure(
       billingApiBaseUrl: billingApiBaseUrl,
       publicKeyPem: publicKeyPem ?? defaultPublicKeyPem,
-      licenseBackend: licenseBackend,
+      coreLibraryPath: coreLibraryPath,
     );
+    RustBillingCore.require(coreLibraryPath);
   }
 
   static void resetForTesting() {
     _billingApiBaseUrl = null;
     _publicKeyPem = null;
-    _verifier = null;
     _apiClient = null;
     _currentPayload = null;
     _loadedKeyFingerprint = null;
@@ -160,10 +153,6 @@ class BillingSdk {
     return pem;
   }
 
-  static TokenVerifier get _verifierOrThrow {
-    return _verifier ??= TokenVerifier(publicKeyPem: _pemOrThrow);
-  }
-
   static BillingApiClient get _apiClientOrThrow {
     final base = _billingApiBaseUrl;
     if (base == null || base.isEmpty) {
@@ -174,12 +163,8 @@ class BillingSdk {
     return _apiClient ??= BillingApiClient(baseUrl: base);
   }
 
-  static RustBillingCore? get _rustIfActive {
-    if (RustBillingCore.resolveBackend() != LicenseBackend.rustCore) {
-      return null;
-    }
-    return _rust ??= RustBillingCore.tryOpen();
-  }
+  static RustBillingCore get _core =>
+      _rust ??= RustBillingCore.require();
 
   static void init(String? savedSignedJson) {
     if (savedSignedJson == null || savedSignedJson.trim().isEmpty) {
@@ -211,94 +196,63 @@ class BillingSdk {
       );
     }
 
-    final rust = _rustIfActive;
-    if (rust != null) {
-      final session = <String, dynamic>{
-        'account_key': accountKey ?? 'default',
-        'access_token': authorizationToken,
-        'license_jwt': cachedLicenseJwt,
-        'license_etag': ifNoneMatch,
-        'paying_party_id_header': payingPartyId,
-      };
-      final outcome = rust.syncLicense(
-        apiBaseUrl: base,
-        publicKeyPem: _pemOrThrow,
-        session: session,
-      );
-      switch (outcome) {
-        case RustSyncUpdated(:final session, :final payload):
-          if (payload != null) _currentPayload = payload;
-          final jwt = session['license_jwt'] as String?;
-          if (jwt == null || jwt.isEmpty) {
-            return const SyncFailure(message: 'Rust sync returned empty JWT');
-          }
-          return SyncSuccess(
-            signedToken: jwt,
-            etag: session['license_etag'] as String?,
-          );
-        case RustSyncNotModified(:final session, :final payload):
-          if (payload != null) _currentPayload = payload;
-          return SyncNotModified(etag: session['license_etag'] as String?);
-        case RustSyncFailure(:final message):
-          return SyncFailure(message: message);
-      }
-    }
-
-    final result = await _apiClientOrThrow.fetchLicense(
-      authorizationToken: authorizationToken,
-      payingPartyId: payingPartyId,
-      ifNoneMatch: ifNoneMatch,
+    final session = <String, dynamic>{
+      'account_key': accountKey ?? 'default',
+      'access_token': authorizationToken,
+      'license_jwt': cachedLicenseJwt,
+      'license_etag': ifNoneMatch,
+      'paying_party_id_header': payingPartyId,
+    };
+    final outcome = _core.syncLicense(
+      apiBaseUrl: base,
+      publicKeyPem: _pemOrThrow,
+      session: session,
     );
-    switch (result) {
-      case SyncNotModified():
-        return result;
-      case SyncSuccess(:final signedToken):
-        final verifyResult = _verifierOrThrow.verifyAndDecode(signedToken);
-        switch (verifyResult) {
-          case VerifySuccess(:final payload):
-            _currentPayload = payload;
-            return result;
-          case VerifyFailure(:final error):
-            return SyncFailure(message: error.message);
+    switch (outcome) {
+      case RustSyncUpdated(:final session, :final payload):
+        if (payload != null) _currentPayload = payload;
+        final jwt = session['license_jwt'] as String?;
+        if (jwt == null || jwt.isEmpty) {
+          return const SyncFailure(message: 'Rust sync returned empty JWT');
         }
-      case SyncFailure():
-        return result;
+        return SyncSuccess(
+          signedToken: jwt,
+          etag: session['license_etag'] as String?,
+        );
+      case RustSyncNotModified(:final session, :final payload):
+        if (payload != null) _currentPayload = payload;
+        return SyncNotModified(etag: session['license_etag'] as String?);
+      case RustSyncFailure(:final message):
+        return SyncFailure(message: message);
     }
   }
 
   static Future<BootstrapResult> ensureBillingContext({
     required String authorizationToken,
   }) async {
-    final rust = _rustIfActive;
-    if (rust != null) {
-      final base = _billingApiBaseUrl;
-      if (base == null || base.isEmpty) {
-        return const BootstrapFailure(
-          message: 'BillingSdk: configure billingApiBaseUrl before bootstrap.',
-        );
-      }
-      final json = rust.ensureBillingContextRaw(
-        apiBaseUrl: base,
-        accessToken: authorizationToken,
+    final base = _billingApiBaseUrl;
+    if (base == null || base.isEmpty) {
+      return const BootstrapFailure(
+        message: 'BillingSdk: configure billingApiBaseUrl before bootstrap.',
       );
-      if (json['ok'] != true) {
-        return BootstrapFailure(
-          message: json['message'] as String? ?? 'Bootstrap failed',
-        );
-      }
-      try {
-        final data = json['data'];
-        final map = _asStringKeyedMap(data) ?? <String, dynamic>{};
-        // Nested maps from FFI JSON may be Map<dynamic, dynamic>.
-        final normalized = _normalizeJsonMap(map);
-        return BootstrapSuccess(PayingPartyBillingStats.fromJson(normalized));
-      } catch (e) {
-        return BootstrapFailure(message: 'Invalid bootstrap payload: $e');
-      }
     }
-    return _apiClientOrThrow.ensureBillingContext(
-      authorizationToken: authorizationToken,
+    final json = _core.ensureBillingContextRaw(
+      apiBaseUrl: base,
+      accessToken: authorizationToken,
     );
+    if (json['ok'] != true) {
+      return BootstrapFailure(
+        message: json['message'] as String? ?? 'Bootstrap failed',
+      );
+    }
+    try {
+      final data = json['data'];
+      final map = _asStringKeyedMap(data) ?? <String, dynamic>{};
+      final normalized = _normalizeJsonMap(map);
+      return BootstrapSuccess(PayingPartyBillingStats.fromJson(normalized));
+    } catch (e) {
+      return BootstrapFailure(message: 'Invalid bootstrap payload: $e');
+    }
   }
 
   static Future<PayingPartyBillingStats> fetchBillingStats({
@@ -323,13 +277,10 @@ class BillingSdk {
 
   static VerifyResult verifyAndDecode(String pastedJson) {
     final trimmed = pastedJson.trim();
-    final rust = _rustIfActive;
-    final VerifyResult result;
-    if (rust != null) {
-      result = rust.verifyLicense(publicKeyPem: _pemOrThrow, jwt: trimmed);
-    } else {
-      result = _verifierOrThrow.verifyAndDecode(trimmed);
-    }
+    final result = _core.verifyLicense(
+      publicKeyPem: _pemOrThrow,
+      jwt: trimmed,
+    );
     if (result case VerifySuccess(:final payload)) {
       _currentPayload = payload;
     }

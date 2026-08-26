@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:two_key_dart_sdk/billing_dart_sdk.dart';
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,13 +12,38 @@ MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgK/simzQCmAKvxHnO
 DcI/h/+lbVcG6QaSXALyCF6lcToJ8+hbIYYbxzle8zsSlDJmrlVpZ5qd
 -----END PRIVATE KEY-----''';
 
+String? _findCoreLib() {
+  final candidates = <File>[
+    File('../../bin/two_key_core.dll'),
+    File('../../bin/libtwo_key_core.dylib'),
+    File('../../bin/libtwo_key_core.so'),
+  ];
+  final dev = Platform.environment['TWOKEY_CORE_DEV_DIR'];
+  if (dev != null && dev.isNotEmpty) {
+    candidates.addAll([
+      File('$dev/target/release/two_key_core.dll'),
+      File('$dev/target/debug/two_key_core.dll'),
+      File('$dev/target/release/libtwo_key_core.so'),
+      File('$dev/target/debug/libtwo_key_core.so'),
+      File('$dev/target/release/libtwo_key_core.dylib'),
+    ]);
+  }
+  for (final f in candidates) {
+    if (f.existsSync()) return f.absolute.path;
+  }
+  return null;
+}
+
 /// Flat payload: payload_version, iss, aud, iat, exp, paying_party, subscriptions[].
 String _createCanonicalBillingToken({Duration? expiresIn}) {
   final exp = expiresIn != null
       ? DateTime.now().add(expiresIn).millisecondsSinceEpoch ~/ 1000
-      : DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch ~/ 1000;
+      : DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch ~/
+          1000;
   final iat = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-  final validUntil = DateTime.now().toUtc().add(const Duration(days: 30)).millisecondsSinceEpoch ~/ 1000;
+  final validUntil =
+      DateTime.now().toUtc().add(const Duration(days: 30)).millisecondsSinceEpoch ~/
+          1000;
   final jwt = JWT(
     {
       'payload_version': 1,
@@ -48,30 +75,51 @@ String _createCanonicalBillingToken({Duration? expiresIn}) {
 }
 
 void main() {
+  final coreLib = _findCoreLib();
+
   group('BillingSdk', () {
+    setUpAll(() {
+      if (coreLib == null) {
+        // ignore: avoid_print
+        print(
+          'skip BillingSdk rust tests: set TWOKEY_CORE_DEV_DIR or fetch binaries',
+        );
+      }
+    });
+
     setUp(() {
+      if (coreLib == null) return;
       BillingSdk.configureForTesting(
         billingApiBaseUrl: 'https://billing.example.com',
+        coreLibraryPath: coreLib,
       );
+    });
+
+    tearDown(() {
+      BillingSdk.resetForTesting();
     });
 
     group('init', () {
       test('init(null) leaves payload null', () {
+        if (coreLib == null) return;
         BillingSdk.init(null);
         expect(BillingSdk.getPayload(), isNull);
       });
 
       test('init(empty string) leaves payload null', () {
+        if (coreLib == null) return;
         BillingSdk.init('');
         expect(BillingSdk.getPayload(), isNull);
       });
 
       test('init(invalid token) leaves payload null', () {
+        if (coreLib == null) return;
         BillingSdk.init('not.a.jwt');
         expect(BillingSdk.getPayload(), isNull);
       });
 
       test('init(valid token) stores payload', () {
+        if (coreLib == null) return;
         final token = _createCanonicalBillingToken();
         BillingSdk.init(token);
         final payload = BillingSdk.getPayload();
@@ -90,18 +138,23 @@ void main() {
 
     group('verifyAndDecode', () {
       test('empty string returns VerifyFailure malformed', () {
+        if (coreLib == null) return;
         final result = BillingSdk.verifyAndDecode('');
         expect(result, isA<VerifyFailure>());
-        expect((result as VerifyFailure).error.reason,
-            BillingTokenErrorReason.malformed);
+        expect(
+          (result as VerifyFailure).error.reason,
+          BillingTokenErrorReason.malformed,
+        );
       });
 
       test('invalid token returns VerifyFailure', () {
+        if (coreLib == null) return;
         final result = BillingSdk.verifyAndDecode('invalid');
         expect(result, isA<VerifyFailure>());
       });
 
       test('valid token returns VerifySuccess and updates getPayload', () {
+        if (coreLib == null) return;
         final token = _createCanonicalBillingToken();
         final result = BillingSdk.verifyAndDecode(token);
         expect(result, isA<VerifySuccess>());
@@ -113,7 +166,9 @@ void main() {
 
     group('syncFromServer', () {
       test('without billingApiBaseUrl throws on sync', () async {
+        if (coreLib == null) return;
         BillingSdk.resetForTesting();
+        RustBillingCore.open(coreLib);
         expectLater(
           BillingSdk.syncFromServer(authorizationToken: 'Bearer x'),
           throwsStateError,
@@ -121,17 +176,19 @@ void main() {
       });
 
       test('with empty authorizationToken returns SyncFailure', () async {
-        BillingSdk.configureForTesting(
-          billingApiBaseUrl: 'https://billing.example.com/',
-        );
+        if (coreLib == null) return;
         final result = await BillingSdk.syncFromServer(authorizationToken: '');
         expect(result, isA<SyncFailure>());
         expect((result as SyncFailure).message, contains('token'));
       });
 
       test('verify without public key throws', () {
+        if (coreLib == null) return;
         BillingSdk.resetForTesting();
-        BillingSdk.configure(billingApiBaseUrl: 'https://billing.example.com');
+        BillingSdk.configure(
+          billingApiBaseUrl: 'https://billing.example.com',
+          coreLibraryPath: coreLib,
+        );
         expect(
           () => BillingSdk.verifyAndDecode('a.b.c'),
           throwsStateError,
@@ -153,7 +210,9 @@ void main() {
           'https://billing.example.com',
         );
         expect(
-          normalizeBillingApiBaseUrl('https://billing.example.com/api/billing/'),
+          normalizeBillingApiBaseUrl(
+            'https://billing.example.com/api/billing/',
+          ),
           'https://billing.example.com',
         );
       });

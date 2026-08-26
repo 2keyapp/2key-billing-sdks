@@ -45,7 +45,7 @@
 - [x] 4.4 Host still supplies `AuthSessionLauncher` + storage (+ `BillingMode`)
 - [x] 4.5 Conformance + FRB tests green on Rust path (normalize, sync rejects missing token, offline mode)
 - [x] 4.6 Scomm/secMail thin canary: path dep + `BillingMode.online` on `BillingSession` (billing consumer only — no mailbox/OAuth refactors)
-- [ ] 4.7 Remove duplicate pure-Dart license/session code after soak (`LicenseBackend.pureDart` fallback remains until then)
+- [x] 4.7 Remove duplicate pure-Dart license/session code — `TokenVerifier` deleted; license verify/sync/bootstrap are rust-only via `RustBillingCore.require`
 
 ## 5. CLI
 

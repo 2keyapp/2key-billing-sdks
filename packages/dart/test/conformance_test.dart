@@ -62,8 +62,7 @@ void main() {
     );
   });
 
-  test('LicenseBackend has pureDart and rustCore', () {
-    expect(LicenseBackend.pureDart, isNot(LicenseBackend.rustCore));
-    expect(RustBillingCore.preferredBackend, LicenseBackend.rustCore);
+  test('RustBillingCore is the license path', () {
+    expect(RustBillingCore.tryOpen, isA<Function>());
   });
 }

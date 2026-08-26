@@ -6,7 +6,7 @@ Dart product path to private **`two-key-core`**.
 |------|------|
 | `billing_mode.dart` | `BillingMode.offline` / `.online` |
 | `frb_wire.dart` | C ABI loader (`two_key_*`) — interim until codegen |
-| `rust_billing_core.dart` | Product adapter used by `BillingSdk` |
+| `rust_billing_core.dart` | Sole license verify/sync/bootstrap adapter |
 
 ## flutter_rust_bridge 2.11.1
 
@@ -19,4 +19,5 @@ Dart product path to private **`two-key-core`**.
 - **Offline:** `RustBillingCore.verifyLicense` / `initLicense` (no network).
 - **Online:** `ensureBillingContextRaw` + `syncLicense` (ETag).
 
-Host storage stays in Dart; session JSON crosses the bridge.
+Host storage stays in Dart; session JSON crosses the bridge. There is no pure-Dart
+license verify/sync fallback — the native library is required.

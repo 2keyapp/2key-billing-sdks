@@ -29,7 +29,7 @@ Rules:
 - Use [BillingMode] on `BillingSession` for offline vs online license behavior:
   - `BillingMode.offline` — restore/verify cached license JWT only (no license HTTP).
   - `BillingMode.online` — allow `syncOnlineForAccount` / poll when entitlements exist.
-- License verify/sync prefer **`two-key-core` via FRB wire** (`LicenseBackend.rustCore`) when the native lib is present; hosts must not import Rust crates. Fetch binaries with `scripts/fetch-binaries.*`.
+- License verify/sync/bootstrap **require** `two-key-core` via FRB wire (`RustBillingCore`). Hosts must not import Rust crates. Fetch binaries with `scripts/fetch-binaries.*` (or `TWOKEY_CORE_LIB` / `TWOKEY_CORE_DEV_DIR` for local builds).
 
 ```dart
 final session = BillingSession(

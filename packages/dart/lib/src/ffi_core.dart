@@ -5,7 +5,6 @@ import 'frb/frb_wire.dart';
 
 export 'frb/rust_billing_core.dart'
     show
-        LicenseBackend,
         RustBillingCore,
         RustSyncOutcome,
         RustSyncUpdated,

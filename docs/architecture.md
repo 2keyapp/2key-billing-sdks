@@ -548,7 +548,7 @@ SComm is a **billing SDK consumer canary only** — not a place for unrelated ap
 
 - Depend only on **`two_key_dart_sdk`** / **`2key_dart_sdk`**.
 - Keep in app: OAuth browser/loopback UX, domain entities (`UserEntities`), addon UI.
-- Use SDK `BillingMode` + `LicenseBackend.rustCore` (FRB wire → `two-key-core`); do not import Rust crates or `better_auth` in the app.
+- Use SDK `BillingMode` + `RustBillingCore` (FRB wire → `two-key-core`); do not import Rust crates or `better_auth` in the app. Fetch native libs via `scripts/fetch-binaries.*`.
 - DI: single billing wiring module; app_auth and subscriptions both consume SDK types.
 - Forbid `package:better_auth` and direct Rust crate imports in the app (CI).
 
@@ -580,7 +580,7 @@ SComm is a **billing SDK consumer canary only** — not a place for unrelated ap
 
 - [x] Create `2key-billing-sdks` with `packages/dart`, conformance (core source remains private `2key-core-sdk`).
 - [x] Implement `two-key-core` against fixtures + FRB/C ABI offline verify & online sync.
-- [x] Dart FRB wire dual-path (`LicenseBackend.rustCore` default when lib present); SComm thin canary.
+- [x] Dart FRB wire rust-only license path (`RustBillingCore`); SComm thin canary.
 - [x] Ship `two-key` CLI smoke commands.
 
 ### Phase 4 — Browser SDK

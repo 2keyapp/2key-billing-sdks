@@ -3,29 +3,21 @@ import 'dart:convert';
 import '../api/billing_api_client.dart';
 import '../models/billing_token_error.dart';
 import '../models/billing_token_payload.dart';
-import '../verification/token_verifier.dart';
 import 'frb_wire.dart';
-
-/// Which license implementation to prefer.
-enum LicenseBackend {
-  /// Pure Dart (`dart_jsonwebtoken`) — soak fallback.
-  pureDart,
-
-  /// Prefers `two-key-core` via FRB wire (default when native lib is present).
-  rustCore,
-}
 
 /// Product adapter over private `two-key-core` (FRB / C ABI wire).
 ///
 /// Offline: [verifyLicense] / [initLicense].
-/// Online: [ensureBillingContext] + [syncLicense].
+/// Online: [ensureBillingContextRaw] + [syncLicense].
+///
+/// Hosts must ship or fetch the native library (`scripts/fetch-binaries` /
+/// `TWOKEY_CORE_LIB` / `TWOKEY_CORE_DEV_DIR`).
 class RustBillingCore {
   RustBillingCore._(this._wire);
 
   final FrbWire _wire;
 
   static RustBillingCore? _instance;
-  static LicenseBackend preferredBackend = LicenseBackend.rustCore;
 
   /// Opens (or returns) the shared native core when available.
   static RustBillingCore? tryOpen([String? libraryPath]) {
@@ -43,19 +35,20 @@ class RustBillingCore {
     return _instance ??= RustBillingCore._(FrbWire.open(libraryPath));
   }
 
-  static void resetForTesting() {
-    _instance = null;
-    preferredBackend = LicenseBackend.rustCore;
+  /// Production path: native core is required.
+  static RustBillingCore require([String? libraryPath]) {
+    final core = tryOpen(libraryPath);
+    if (core == null) {
+      throw StateError(
+        'two_key_core native library is required. '
+        'Run scripts/fetch-binaries or set TWOKEY_CORE_LIB / TWOKEY_CORE_DEV_DIR.',
+      );
+    }
+    return core;
   }
 
-  /// Effective backend: rust when preferred and loadable, else pure Dart.
-  static LicenseBackend resolveBackend() {
-    if (preferredBackend == LicenseBackend.pureDart) {
-      return LicenseBackend.pureDart;
-    }
-    return tryOpen() != null
-        ? LicenseBackend.rustCore
-        : LicenseBackend.pureDart;
+  static void resetForTesting() {
+    _instance = null;
   }
 
   String normalizeApiBaseUrl(String input) => _wire.normalizeApiBaseUrl(input);

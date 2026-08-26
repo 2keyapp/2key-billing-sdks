@@ -75,20 +75,20 @@ void main() {
     expect(result, isA<VerifyFailure>());
   });
 
-  test('BillingSdk prefers rustCore when lib present', () {
+  test('BillingSdk requires native core', () {
     final lib = _findCoreLib();
     if (lib == null) {
-      BillingSdk.configureForTesting(licenseBackend: LicenseBackend.pureDart);
-      expect(BillingSdk.licenseBackend, LicenseBackend.pureDart);
+      expect(
+        () => BillingSdk.configureForTesting(),
+        throwsA(isA<StateError>()),
+      );
       return;
     }
-    Platform.environment; // keep analyzer happy on web stubs
-    RustBillingCore.open(lib);
     BillingSdk.configureForTesting(
-      licenseBackend: LicenseBackend.rustCore,
+      billingApiBaseUrl: 'https://billing.example.com',
+      coreLibraryPath: lib,
     );
-    // After open, resolveBackend sees the instance.
-    expect(RustBillingCore.resolveBackend(), LicenseBackend.rustCore);
+    expect(RustBillingCore.tryOpen(lib), isNotNull);
   });
 
   test('syncLicense JSON rejects missing token via rust', () {
