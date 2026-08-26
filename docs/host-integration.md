@@ -29,36 +29,15 @@ Rules:
 
 See [retire-billing-dart-sdk.md](retire-billing-dart-sdk.md).
 
-## Browser / SPA (billing-portal)
+## Browser / SPA
 
-```bash
-npm install @2key/ts-sdk
-# or git dependency on this monorepo path packages/ts until published
-```
+TypeScript / browser product SDK: **[`2key-browser-sdk`](https://github.com/2keyapp/2key-browser-sdk)** (`@2key/browser-sdk`).
 
 ```ts
-import {
-  BillingApiClient,
-  acquireApiToken,
-  verifyLicenseJwt,
-  portalHandoffUrl,
-  shopUrl,
-} from "@2key/ts-sdk";
+import { acquireApiToken, verifyLicenseJwt, authorize } from "@2key/browser-sdk";
 ```
 
-Typical browser flow:
-
-1. Better Auth cookie session via redirect (`socialSignInUrl` / host auth client).
-2. `acquireApiToken(config)` → billing JWT (`aud=billing`).
-3. `BillingApiClient.ensureBillingContext` / `fetchLicense` / `fetchPlans`.
-4. `verifyLicenseJwt` offline with the public PEM.
-5. Portal handoff from native: `portalHandoffUrl` + OTT from auth host.
-
-The SPA must **not** import `better-auth` server plugins or private core binaries.
-Auth client usage stays behind portal code or a thin wrapper; prefer SDK helpers
-above for `/api/v1` and license verify.
-
-See [portal-migration.md](portal-migration.md) and [auth-protocol.md](auth-protocol.md).
+See that repo’s `docs/host-integration.md` and `docs/portal-migration.md`.
 
 ## CLI / ops
 

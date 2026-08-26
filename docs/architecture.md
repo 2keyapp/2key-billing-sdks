@@ -3,7 +3,7 @@
 **Status:** Adopted — **Binary Private Core**  
 **Private native core:** [`2keyapp/2key-core-sdk`](https://github.com/2keyapp/2key-core-sdk) (`two-key-core` + `two-key` CLI source)  
 **Public distribution:** this monorepo — **CLI first** (Win/macOS/Linux) + language wrappers + OpenAPI  
-**Browser reference:** **`@2key/ts-sdk`** (`packages/ts`)  
+**Browser reference:** public [`2key-browser-sdk`](https://github.com/2keyapp/2key-browser-sdk) (`@2key/browser-sdk`)  
 **Dart:** **`packages/dart` / `2key_dart_sdk`** (canonical); `billing_dart_sdk` **retired early** — see [retire-billing-dart-sdk.md](retire-billing-dart-sdk.md)  
 **Last updated:** 2026-08-25  
 **Repo:** this monorepo (`2key-billing-sdks`)  
@@ -40,7 +40,7 @@ This document defines how 2key Billing is structured across repositories so that
 | Rust core (native reference) | **`two-key-core`** | **Private** `2key-core-sdk` — binaries only to ISVs |
 | CLI | **`two-key`** | GitHub Release assets (Win/macOS/Linux) via fetch scripts |
 | Dart / Flutter | **`2key_dart_sdk`** (FFI → prebuilt core) | pub (or git until published) |
-| TypeScript (browser) | **`2key_ts_sdk`** / `@2key/ts-sdk` | npm |
+| TypeScript (browser) | **`@2key/browser-sdk`** | npm — repo `2key-browser-sdk` |
 | TypeScript React helpers (optional) | **`2key_react_sdk`** / `@2key/react-sdk` | npm |
 | Kotlin (Android / JVM) | **`2key_kotlin_sdk`** (UniFFI → `2key_core`) | Maven |
 | Swift (iOS / macOS) | **`2key_swift_sdk`** (UniFFI → `2key_core`) | SPM |
@@ -55,7 +55,8 @@ This document defines how 2key Billing is structured across repositories so that
 
 | Package / repo | Role |
 |----------------|------|
-| **`2keyapp/2key-core-sdk`** | Private core: `two-key-core`, `two-key` CLI source, DP packages (`@2key/dp-*`), catalogs |
+| **`2keyapp/2key-core-sdk`** | Private core: `two-key-core`, `two-key` CLI source, DP **Rust** (`dp-rust*`) |
+| **`2keyapp/2key-browser-sdk`** | Public TypeScript / browser SDK: AuthN + AuthZ + Billing + catalogs |
 | `@2key/billing-core` | License, usage, plans, seats, pricing, entitlement rules (server) |
 | `@2key/billing-mtls` | CA, cert issue/rotate, mTLS verify, machine identities |
 | `@2key/billing-api` | HTTP app mounting `/api/v1` |

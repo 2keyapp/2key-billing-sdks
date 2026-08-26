@@ -36,5 +36,5 @@ See `docs/error-codes.md`. Wrappers must map to the same snake_case strings.
 ## References
 
 - Native: private `2key-core-sdk` crate `two-key-core` (binaries only in public tree)
-- Browser: `packages/ts` (`@2key/ts-sdk`)
+- Browser: [`2key-browser-sdk`](https://github.com/2keyapp/2key-browser-sdk) (`@2key/browser-sdk`)
 - OpenAPI: `openapi/2key-billing.yaml`
