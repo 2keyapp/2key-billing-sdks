@@ -36,6 +36,10 @@ Server must allow the SPA origin in Better Auth trusted origins / CORS.
 | Token | Auth client mints billing API JWT; feed into `2key_core` session |
 | Storage | Secure storage port (Keychain / Keystore / DPAPI / Flutter secure storage) namespaced by `storage_prefix` |
 | CLI | Device code / loopback / pasted token; OS keyring |
+| License | Offline: ES256 verify via `two-key-core` (FRB). Online: `ensure_billing_context` + `sync_license` (ETag) via core |
+| BillingMode | Dart `BillingSession.mode`: `offline` blocks license HTTP; `online` allows sync/poll |
+
+OAuth / PKCE / loopback stay in the host + auth adapter — **not** in `two-key-core`.
 
 ## Machine identity (not Better Auth)
 

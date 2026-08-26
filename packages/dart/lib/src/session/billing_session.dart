@@ -6,6 +6,7 @@ import '../auth/billing_auth_session.dart';
 import '../auth/billing_auth_tokens.dart';
 import '../auth/billing_profile_merge.dart';
 import '../exceptions/billing_sync_error.dart';
+import '../frb/billing_mode.dart';
 import '../models/billing_token_error.dart';
 import '../models/billing_token_payload.dart';
 import '../billing_sdk.dart';
@@ -50,11 +51,32 @@ class SessionVerifyFailure extends SessionVerifyOutcome {
 /// the authenticated identity owns the org; portal validates server-side.
 ///
 /// Periodic polling runs only when [shouldPollLicenseEntitlements] is true (assigned
-/// seat or subscriptions in the license). Manual [syncOnlineForAccount] always works.
+/// seat or subscriptions in the license). Manual [syncOnlineForAccount] always works
+/// when [mode] is [BillingMode.online].
 class BillingSession {
-  BillingSession({required BillingSessionStore store}) : _store = store;
+  BillingSession({
+    required BillingSessionStore store,
+    BillingMode mode = BillingMode.online,
+  }) : _store = store,
+       _mode = mode;
 
   final BillingSessionStore _store;
+  BillingMode _mode;
+
+  /// Offline = cached JWT only; online = allow license HTTP sync / poll.
+  BillingMode get mode => _mode;
+
+  set mode(BillingMode value) {
+    _mode = value;
+    if (value == BillingMode.offline) {
+      stopLicensePolling();
+    }
+  }
+
+  /// Convenience: set [BillingMode.offline] or [BillingMode.online].
+  void setOnline(bool online) {
+    mode = online ? BillingMode.online : BillingMode.offline;
+  }
 
   BillingTokenPayload? get payload => BillingSdk.getPayload();
 
@@ -229,11 +251,16 @@ class BillingSession {
     return syncIfLicenseChanged(accountKey: accountKey);
   }
 
-  /// Starts periodic license checks. Polling is a no-op until entitlements exist.
+  /// Starts periodic license checks. Polling is a no-op until entitlements exist
+  /// and [mode] is [BillingMode.online].
   void startLicensePolling({
     required String accountKey,
     Duration interval = defaultLicensePollInterval,
   }) {
+    if (_mode == BillingMode.offline) {
+      stopLicensePolling();
+      return;
+    }
     _pollingAccountKey = accountKey;
     _pollInterval = interval;
     _pollTimer?.cancel();
@@ -273,6 +300,12 @@ class BillingSession {
     String? payingPartyId,
     required bool useCachedEtag,
   }) async {
+    if (_mode == BillingMode.offline) {
+      return const SessionSyncFailure(
+        'Billing is in offline mode. Switch to online to sync licenses.',
+      );
+    }
+
     final authToken = (accessToken ?? _cachedSession?.accessToken ?? '').trim();
     if (authToken.isEmpty) {
       return const SessionSyncFailure(
@@ -299,6 +332,8 @@ class BillingSession {
       authorizationToken: authToken,
       payingPartyId: partyId,
       ifNoneMatch: ifNoneMatch,
+      accountKey: accountKey,
+      cachedLicenseJwt: _cachedSession?.licenseJwt,
     );
 
     final now = DateTime.now().toUtc();
@@ -369,7 +404,8 @@ class BillingSession {
 
   Future<void> _reconcileLicensePolling(String accountKey) async {
     final key = _pollingAccountKey ?? accountKey;
-    if (!shouldPollLicenseEntitlements(_cachedSession)) {
+    if (_mode == BillingMode.offline ||
+        !shouldPollLicenseEntitlements(_cachedSession)) {
       _pollTimer?.cancel();
       _pollTimer = null;
       return;

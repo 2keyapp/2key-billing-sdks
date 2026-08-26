@@ -8,6 +8,15 @@ export 'src/catalog/plan_catalog.dart';
 export 'src/config/billing_sdk_config.dart';
 export 'src/entitlements/addon_entitlements.dart';
 export 'src/exceptions/billing_sync_error.dart';
+export 'src/frb/billing_mode.dart';
+export 'src/frb/rust_billing_core.dart'
+    show
+        LicenseBackend,
+        RustBillingCore,
+        RustSyncOutcome,
+        RustSyncUpdated,
+        RustSyncNotModified,
+        RustSyncFailure;
 export 'src/logging/sdk_logger.dart';
 export 'src/models/models.dart';
 export 'src/session/billing_account_session.dart';
@@ -20,4 +29,4 @@ export 'src/session/license_entitlements.dart';
 export 'src/session/secure_billing_session_store.dart';
 export 'src/verification/token_verifier.dart';
 export 'src/keys/public_key_loader_asset.dart' show loadPublicKeyFromAsset;
-export 'src/ffi_core.dart' show TwoKeyCoreFfi, LicenseBackend, TwoKeyFfiException;
+export 'src/ffi_core.dart' show TwoKeyCoreFfi, TwoKeyFfiException;

@@ -544,9 +544,11 @@ During migration, extract fixtures from current Dart tests first, then implement
 
 ### 10.3 Scomm / secMail integration rules
 
-- Depend only on **`2key_dart_sdk`**.
+SComm is a **billing SDK consumer canary only** — not a place for unrelated app/OAuth/security refactors in this workstream.
+
+- Depend only on **`two_key_dart_sdk`** / **`2key_dart_sdk`**.
 - Keep in app: OAuth browser/loopback UX, domain entities (`UserEntities`), addon UI.
-- Move into SDK/core: profile merge from session+JWT, token enrichment, sign-in orchestration helpers.
+- Use SDK `BillingMode` + `LicenseBackend.rustCore` (FRB wire → `two-key-core`); do not import Rust crates or `better_auth` in the app.
 - DI: single billing wiring module; app_auth and subscriptions both consume SDK types.
 - Forbid `package:better_auth` and direct Rust crate imports in the app (CI).
 
@@ -576,10 +578,10 @@ During migration, extract fixtures from current Dart tests first, then implement
 
 ### Phase 3 — Public SDK monorepo + Rust core
 
-- [ ] Create `2key-billing-sdks` with `crates/2key_core`, `packages/dart`, conformance.
-- [ ] Implement `2key_core` against fixtures (see proposal tasks).
-- [ ] FRB Dart dual-path; Scomm canary; then default Rust path.
-- [ ] Ship `2key_cli` smoke.
+- [x] Create `2key-billing-sdks` with `packages/dart`, conformance (core source remains private `2key-core-sdk`).
+- [x] Implement `two-key-core` against fixtures + FRB/C ABI offline verify & online sync.
+- [x] Dart FRB wire dual-path (`LicenseBackend.rustCore` default when lib present); SComm thin canary.
+- [x] Ship `two-key` CLI smoke commands.
 
 ### Phase 4 — Browser SDK
 

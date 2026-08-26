@@ -26,8 +26,21 @@ Rules:
 - Do **not** set `TWOKEY_CORE_DEV_DIR` in production builds (dev-only).
 - Supply `AuthSessionLauncher` + secure storage adapters; keep OAuth UI in the app.
 - Prefer instance APIs; static `BillingSdk` remains for compatibility.
+- Use [BillingMode] on `BillingSession` for offline vs online license behavior:
+  - `BillingMode.offline` — restore/verify cached license JWT only (no license HTTP).
+  - `BillingMode.online` — allow `syncOnlineForAccount` / poll when entitlements exist.
+- License verify/sync prefer **`two-key-core` via FRB wire** (`LicenseBackend.rustCore`) when the native lib is present; hosts must not import Rust crates. Fetch binaries with `scripts/fetch-binaries.*`.
 
-See [retire-billing-dart-sdk.md](retire-billing-dart-sdk.md).
+```dart
+final session = BillingSession(
+  store: store,
+  mode: BillingMode.online, // or BillingMode.offline
+);
+session.setOnline(false); // → BillingMode.offline
+await BillingSdk.configureFrom(config); // rustCore when lib available
+```
+
+See [retire-billing-dart-sdk.md](retire-billing-dart-sdk.md) and `packages/dart/lib/src/frb/`.
 
 ## Browser / SPA
 

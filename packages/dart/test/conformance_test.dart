@@ -62,7 +62,8 @@ void main() {
     );
   });
 
-  test('rust backend enum defaults conceptually to pureDart', () {
+  test('LicenseBackend has pureDart and rustCore', () {
     expect(LicenseBackend.pureDart, isNot(LicenseBackend.rustCore));
+    expect(RustBillingCore.preferredBackend, LicenseBackend.rustCore);
   });
 }

@@ -39,12 +39,13 @@
 - [x] 4.0 Scaffold `packages/dart` (`two_key_dart_sdk`) with fixture-aligned verify + API client
 - [x] 4.0b Session manager + portal helpers + `LicenseBackend` dual-path flag
 - [x] 4.1 Wire `rustCore` path via dart:ffi → C ABI (`TwoKeyCoreFfi`)
-- [ ] 4.2 Map existing public surface (`BillingSdkConfig`, session, license sync) onto facade
-- [ ] 4.3 Keep Better Auth Dart client internal for Phase A token mint
-- [ ] 4.4 Host still supplies `AuthSessionLauncher` + storage
-- [ ] 4.5 Conformance + integration tests green on Rust path (license JWT roundtrip via FFI)
-- [ ] 4.6 Scomm/secMail optional canary pin; soak; then default Rust path
-- [ ] 4.7 Remove duplicate pure-Dart license/session code after soak
+- [x] 4.1b FRB 2.11.x dep + vendored wire under `lib/src/frb/` (`RustBillingCore`, `BillingMode`); C ABI expanded for offline verify + online sync
+- [x] 4.2 Map existing public surface (`BillingSdkConfig`, session, license sync) onto facade / FRB wire
+- [x] 4.3 Keep Better Auth Dart client internal for Phase A token mint
+- [x] 4.4 Host still supplies `AuthSessionLauncher` + storage (+ `BillingMode`)
+- [x] 4.5 Conformance + FRB tests green on Rust path (normalize, sync rejects missing token, offline mode)
+- [x] 4.6 Scomm/secMail thin canary: path dep + `BillingMode.online` on `BillingSession` (billing consumer only — no mailbox/OAuth refactors)
+- [ ] 4.7 Remove duplicate pure-Dart license/session code after soak (`LicenseBackend.pureDart` fallback remains until then)
 
 ## 5. CLI
 
@@ -66,7 +67,7 @@
 ## 7. Monorepo & naming
 
 - [x] 7.1 Create / migrate to `2key-billing-sdks` layout per design
-- [x] 7.2a Scaffold `packages/dart` as `two_key_dart_sdk` (interim pure-Dart; FRB later)
+- [x] 7.2a Scaffold `packages/dart` as `two_key_dart_sdk` (FRB wire + pure-Dart fallback)
 - [ ] 7.2 Rename production `billing_dart_sdk` → cut over to monorepo package
 - [x] 7.3 Update parent architecture doc status to Adopted for Rust-core sections
 - [x] 7.4 App docs: hosts depend on `2key_<lang>_sdk` only — see [host-integration.md](../../host-integration.md)
