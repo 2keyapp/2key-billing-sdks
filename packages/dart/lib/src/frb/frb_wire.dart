@@ -30,6 +30,26 @@ class FrbWire {
         ),
         _validateConfig = _lib.lookupFunction<_Str3Native, _Str3Dart>(
           'two_key_validate_config_json',
+        ),
+        _cryptoGenerateKeyAndCsr = _lookupCrypto(
+          _lib,
+          'two_key_crypto_generate_key_and_csr_json',
+        ),
+        _cryptoSignClientCert = _lookupCrypto(
+          _lib,
+          'two_key_crypto_sign_client_cert_from_csr_json',
+        ),
+        _cryptoVerifyCert = _lookupCrypto(
+          _lib,
+          'two_key_crypto_verify_ed25519_cert_json',
+        ),
+        _cryptoMaterializeMtls = _lookupCrypto(
+          _lib,
+          'two_key_crypto_materialize_mtls_client_json',
+        ),
+        _cryptoSignJson = _lookupCrypto(
+          _lib,
+          'two_key_crypto_sign_json_b64url_json',
         );
 
   final DynamicLibrary _lib;
@@ -41,6 +61,19 @@ class FrbWire {
   final _Str2Dart _bootstrap;
   final _Str2Dart _shouldPoll;
   final _Str3Dart _validateConfig;
+  final _Str1Dart? _cryptoGenerateKeyAndCsr;
+  final _Str1Dart? _cryptoSignClientCert;
+  final _Str1Dart? _cryptoVerifyCert;
+  final _Str1Dart? _cryptoMaterializeMtls;
+  final _Str1Dart? _cryptoSignJson;
+
+  static _Str1Dart? _lookupCrypto(DynamicLibrary lib, String name) {
+    try {
+      return lib.lookupFunction<_Str1Native, _Str1Dart>(name);
+    } catch (_) {
+      return null;
+    }
+  }
 
   /// Load from path, `TWOKEY_CORE_LIB`, or default search paths.
   factory FrbWire.open([String? libraryPath]) {
@@ -121,6 +154,38 @@ class FrbWire {
     String pem,
     String storagePrefix,
   ) => _call3Json(_validateConfig, apiBaseUrl, pem, storagePrefix);
+
+  Map<String, dynamic> cryptoGenerateKeyAndCsr(String inputJson) =>
+      _call1Json(_requireCrypto(_cryptoGenerateKeyAndCsr, 'generate_key_and_csr'), inputJson);
+
+  Map<String, dynamic> cryptoSignClientCertFromCsr(String inputJson) =>
+      _call1Json(_requireCrypto(_cryptoSignClientCert, 'sign_client_cert_from_csr'), inputJson);
+
+  Map<String, dynamic> cryptoVerifyEd25519Cert(String inputJson) =>
+      _call1Json(_requireCrypto(_cryptoVerifyCert, 'verify_ed25519_cert'), inputJson);
+
+  Map<String, dynamic> cryptoMaterializeMtlsClient(String identityJson) =>
+      _call1Json(_requireCrypto(_cryptoMaterializeMtls, 'materialize_mtls_client'), identityJson);
+
+  Map<String, dynamic> cryptoSignJsonB64Url(String inputJson) =>
+      _call1Json(_requireCrypto(_cryptoSignJson, 'sign_json_b64url'), inputJson);
+
+  _Str1Dart _requireCrypto(_Str1Dart? fn, String name) {
+    if (fn == null) {
+      throw StateError(
+        'two_key_crypto_$name not found — upgrade to two-key-core v0.1.2+ '
+        'or set TWOKEY_CORE_DEV_DIR.',
+      );
+    }
+    return fn;
+  }
+
+  Map<String, dynamic> _call1Json(_Str1Dart fn, String a) {
+    final p = a.toNativeUtf8();
+    final out = fn(p);
+    calloc.free(p);
+    return _readJson(out);
+  }
 
   String _call1(_Str1Dart fn, String a) {
     final p = a.toNativeUtf8();

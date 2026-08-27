@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "data": {
+    "token": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJBYkNkRWZHaElqS2xNbk9wUXJTdVZ4V3hZejAxMjM0NSIsImF1ZCI6InByZXNlbmNlIn0.signature",
+    "expiresIn": 3600,
+    "token_type": "Bearer"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "data": {
+    "status": "approved",
+    "enrollId": "550e8400-e29b-41d4-a716-446655440000",
+    "host": "camera.acme.idr.to",
+    "zone": null,
+    "kind": "machine_target",
+    "ski": "AbCdEfGhIjKlMnOpQrStUvWxYz012345",
+    "publicJwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+      "kid": "AbCdEfGhIjKlMnOpQrStUvWxYz012345",
+      "alg": "EdDSA"
+    },
+    "certPem": "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
+    "chainPem": "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
+    "credential": {
+      "version": 1,
+      "kind": "machine",
+      "entityId": "acme.example",
+      "ski": "AbCdEfGhIjKlMnOpQrStUvWxYz012345",
+      "signature": "eyJ..."
+    },
+    "hostCertCosign": {
+      "kid": "platform-ski",
+      "signedAt": "2026-01-01T00:00:00Z",
+      "signature": "eyJ..."
+    },
+    "seatId": "42"
+  }
+}

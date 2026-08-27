@@ -283,6 +283,7 @@ Target package split: `billing-core`, `billing-mtls`, `billing-api`, `billing-au
 - **`2key_core` (Rust)** is the **native behavioral reference**: license verify/sync, session orchestration, errors, poll policy.
 - **`2key_ts_sdk`** is the **browser behavioral reference** (same OpenAPI + fixtures; cookie/redirect auth).
 - **`2key_dart_sdk`** is the **first production wrapper** (FRB) and Scomm/secMail **integration canary**. Until Rust parity is proven, Dart remains the interim reference for claim names and flows extracted into fixtures.
+- **Machine AuthN HTTP** (`/api/v1/machine-authn/*`, `/api/auth/agent/token`) is implemented in **this repo** (`MachineAuthnClient`, `AgentTokenClient`, future `@2key/billing-ts`). **Device crypto** (CSR, sign, verify, mTLS, PoP) stays in private **`2key-core-sdk`** (`two_key_crypto_*` C ABI → Dart `DeviceCrypto`).
 
 Dart remains valuable because:
 
@@ -429,6 +430,8 @@ Initial groups (extend as features land):
 | Invoicing / credits | billing-core | |
 | SDK `reportUsage()` | all `2key_*_sdk` | Thin HTTP |
 | SDK mTLS helper | `2key_cli`, `2key_node_sdk`, Kotlin, Swift first | Browser limited; logic in `2key_core` where applicable |
+| SDK machine enroll HTTP | `2key-billing-sdks` (`MachineAuthnClient`, `@2key/billing-ts`) | Matches live `/api/v1/machine-authn/*` |
+| SDK device crypto (CSR, sign, mTLS, PoP) | private `2key-core-sdk` (`dp-rust-mtls`, `two_key_crypto_*`) | Never billing HTTP in core |
 
 ### 8.3 Auth vs machine identity
 

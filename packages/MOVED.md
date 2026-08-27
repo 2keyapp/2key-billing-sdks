@@ -1,7 +1,7 @@
 # Moved
 
-TypeScript product SDK packages were moved to
-[`2key-browser-sdk`](https://github.com/2keyapp/2key-browser-sdk).
+TypeScript **billing HTTP** clients live in this repo under **`packages/ts`** (`@2key/billing-ts`).
 
-Use `@2key/browser-sdk` (AuthN + AuthZ + Billing).
-`@2key/ts-sdk` remains a deprecated alias in that repo.
+Browser AuthN + AuthZ + crypto composers remain in
+[`2key-browser-sdk`](https://github.com/2keyapp/2key-browser-sdk) (`@2key/browser-sdk`).
+`@2key/dp-ts` re-exports `@2key/billing-ts` Machine AuthN HTTP with a deprecation shim.

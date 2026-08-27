@@ -128,6 +128,293 @@ paths:
           description: Missing required fields
         "401":
           description: Invalid reporter token
+  /api/v1/machine-authn/register:
+    post:
+      operationId: registerMachineAuthn
+      summary: Register Org Root CA + host cosign on a paying party
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterMachineAuthnRequest"
+      responses:
+        "201":
+          description: Machine AuthN registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+        "401":
+          description: Unauthorized
+  /api/v1/machine-authn/enroll-create:
+    post:
+      operationId: enrollCreate
+      summary: Create a pending device enrollment (CSR + pull token)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnrollCreateRequest"
+      responses:
+        "201":
+          description: Enrollment created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/EnrollCreateResponse"
+  /api/v1/machine-authn/enroll-approve:
+    post:
+      operationId: enrollApprove
+      summary: Approve pending enroll; allocate machine seat when kind is machine_*
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnrollApproveRequest"
+      responses:
+        "200":
+          description: Enrollment approved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+  /api/v1/machine-authn/enroll-pull:
+    post:
+      operationId: enrollPull
+      summary: Device pulls approved enrollment materials (pullToken auth; no JWT)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnrollPullRequest"
+      responses:
+        "200":
+          description: Pending or approved enrollment state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/EnrollPullResponse"
+  /api/v1/machine-authn/enroll-invite:
+    post:
+      operationId: enrollInviteCreate
+      summary: Append a machine enroll invite on the paying party
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnrollInviteCreateRequest"
+      responses:
+        "201":
+          description: Invite created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+    get:
+      operationId: getEnrollInvite
+      summary: Preview invite without consuming a use (no JWT)
+      parameters:
+        - name: payingPartyId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: inviteToken
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invite metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+  /api/v1/machine-authn/issue-delegate:
+    post:
+      operationId: issueDelegate
+      summary: Issue interim_admin / zone_authority child device
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IssueDelegateRequest"
+      responses:
+        "200":
+          description: Delegate issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+  /api/v1/machine-authn/assert-subset:
+    post:
+      operationId: assertSubset
+      summary: Check child capability set is subset of parent
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssertSubsetRequest"
+      responses:
+        "200":
+          description: Subset check result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      ok:
+                        type: boolean
+  /api/v1/machine-authn/platform-root:
+    get:
+      operationId: platformRoot
+      summary: Host (platform) public JWK for cosign verification
+      responses:
+        "200":
+          description: Platform root JWK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+  /api/v1/machine-authn/credential-status:
+    get:
+      operationId: credentialStatus
+      summary: Credential lifecycle status by SKI
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ski
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Credential status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+  /api/v1/machine-authn/enroll-list:
+    get:
+      operationId: enrollList
+      summary: List pending enrollments (forward-compatible; not on all servers)
+      x-sdk-forward: true
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: entityId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Enrollment list
+  /api/v1/machine-authn/machine-renew:
+    post:
+      operationId: machineRenew
+      summary: Renew machine credential (forward-compatible)
+      x-sdk-forward: true
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Renewed credential
+  /api/auth/agent/token:
+    post:
+      operationId: mintAgentToken
+      summary: Mint Target Agent entitlement JWT (Better Auth host, not /api/v1)
+      servers:
+        - url: https://billing.example.com
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentTokenMintRequest"
+      responses:
+        "200":
+          description: Agent token minted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/AgentTokenMintResponse"
+        "401":
+          description: Invalid credential or proof
 components:
   securitySchemes:
     bearerAuth:
@@ -295,3 +582,194 @@ components:
                 type: string
               assigned_user_party_id:
                 type: string
+    RegisterMachineAuthnRequest:
+      type: object
+      required: [payingPartyId, memberId, entityId, package, rootSki, caCertPem]
+      properties:
+        payingPartyId:
+          type: string
+        memberId:
+          type: string
+        entityId:
+          type: string
+        package:
+          type: string
+          enum: [personal, enterprise]
+        rootSki:
+          type: string
+        caCertPem:
+          type: string
+        rootCredential:
+          type: object
+          additionalProperties: true
+    EnrollCreateRequest:
+      type: object
+      required: [payingPartyId, memberId, csrPem]
+      properties:
+        payingPartyId:
+          type: string
+        memberId:
+          type: string
+        kind:
+          type: string
+          enum: [machine_target, machine_source, root_admin, interim_admin, zone_authority]
+        host:
+          type: string
+        zone:
+          type: string
+        csrPem:
+          type: string
+        publicJwk:
+          type: object
+          additionalProperties: true
+        subjectSki:
+          type: string
+        inviteToken:
+          type: string
+        platform:
+          type: string
+    EnrollCreateResponse:
+      type: object
+      required: [enrollId, pullToken, subjectSki, status]
+      properties:
+        enrollId:
+          type: string
+          format: uuid
+        pullToken:
+          type: string
+        subjectSki:
+          type: string
+        kind:
+          type: string
+        status:
+          type: string
+          enum: [pending]
+    EnrollApproveRequest:
+      type: object
+      required: [enrollId, memberId, leafPem, chainPem, credential, issuerSki]
+      properties:
+        enrollId:
+          type: string
+          format: uuid
+        memberId:
+          type: string
+        leafPem:
+          type: string
+        chainPem:
+          type: string
+        credential:
+          type: object
+          additionalProperties: true
+        issuerSki:
+          type: string
+    EnrollPullRequest:
+      type: object
+      required: [pullToken]
+      properties:
+        pullToken:
+          type: string
+    EnrollPullResponse:
+      type: object
+      required: [status, enrollId]
+      properties:
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        enrollId:
+          type: string
+        host:
+          type: string
+        zone:
+          type: string
+        kind:
+          type: string
+        ski:
+          type: string
+        publicJwk:
+          type: object
+        certPem:
+          type: string
+        chainPem:
+          type: string
+        credential:
+          type: object
+        hostCertCosign:
+          type: object
+        seatId:
+          type: string
+          nullable: true
+    EnrollInviteCreateRequest:
+      type: object
+      required: [payingPartyId, memberId]
+      properties:
+        payingPartyId:
+          type: string
+        memberId:
+          type: string
+        kind:
+          type: string
+          enum: [machine_target, machine_source]
+        expiresInSeconds:
+          type: integer
+        maxUses:
+          type: integer
+    IssueDelegateRequest:
+      type: object
+      required: [payingPartyId, memberId, issuerSki, kind, credential]
+      properties:
+        payingPartyId:
+          type: string
+        memberId:
+          type: string
+        issuerSki:
+          type: string
+        kind:
+          type: string
+          enum: [interim_admin, zone_authority]
+        credential:
+          type: object
+        zone:
+          type: string
+        platform:
+          type: string
+    AssertSubsetRequest:
+      type: object
+      required: [child, parent]
+      properties:
+        child:
+          type: array
+          items:
+            type: object
+        parent:
+          type: array
+          items:
+            type: object
+        catalog:
+          type: object
+    AgentTokenMintRequest:
+      type: object
+      required: [credential, proof, targetIdentity]
+      properties:
+        credential:
+          type: object
+          additionalProperties: true
+        proof:
+          type: object
+          required: [ts, signature]
+          properties:
+            ts:
+              type: integer
+            signature:
+              type: string
+        targetIdentity:
+          type: string
+    AgentTokenMintResponse:
+      type: object
+      required: [token, expiresIn]
+      properties:
+        token:
+          type: string
+        expiresIn:
+          type: integer
+        token_type:
+          type: string
