@@ -2,19 +2,19 @@
   "version": "0.1.2",
   "tag": "v0.1.2",
   "repo": "2keyapp/2key-core-sdk",
-  "note": "Adds two_key_crypto_* C ABI (device CSR/sign/mTLS/PoP). SHA256 pins update when v0.1.2 release assets are published to GitHub; until then use TWOKEY_CORE_DEV_DIR for local builds.",
+  "note": "SHA256 pins for 2key-core-sdk release v0.1.2 (two_key_crypto_* C ABI).",
   "assets": {
-    "two-key-linux-x86_64": { "sha256": "2f07033fe58d0f01dee105ba7206f8ea4a7409bda1ccddc78da992608a061d73" },
-    "two-key-linux-aarch64": { "sha256": "2552873334b2a22905a8acdc9288f92de0de5cb98f7f2983689a7fa2f30f41b0" },
-    "two-key-macos-x86_64": { "sha256": "8e82e77de2c0e6041560f9590377f7b7805bdf54a3a8199fa4cc0a06e3f17e52" },
-    "two-key-macos-aarch64": { "sha256": "a6bc508e3784576eae5020a951510ce3e411fb04583ac155d90f201d53201820" },
-    "two-key-windows-x86_64.exe": { "sha256": "bf1248d6da3eccf28b34f4ef2b8fe63073d8563df6023bf7a4b653daf24edccd" },
-    "two-key-windows-aarch64.exe": { "sha256": "128a48658755525cee7f66f840a90cb8cde537e933f1efeb217c3e4af3828924" },
-    "libtwo_key_core-linux-x86_64.so": { "sha256": "5dfb99a13789e6feafa5ea191fb8c229e3cb20d2fe417598b33005c297f1065f" },
-    "libtwo_key_core-linux-aarch64.so": { "sha256": "04cfd2c960dbcd63169e83bdd34079ed0f86ee057082a847c91a4a03b9bbec2c" },
-    "libtwo_key_core-macos-x86_64.dylib": { "sha256": "c2a57ec16e313c2aac31580549c37bdfb1007d13f3b1dcbd948f35ed91df979c" },
-    "libtwo_key_core-macos-aarch64.dylib": { "sha256": "a700ed5e6250d94ab31ae56a3032b613eefe162013b63225bc955a728989f064" },
-    "two_key_core-windows-x86_64.dll": { "sha256": "7c69e8078c1879b508327ae1876eb9a296769e5fe738c5e8d0a1ede13b7a2d86" },
-    "two_key_core-windows-aarch64.dll": { "sha256": "ec64fc5e0e71992449f301622e94353441b7e7d95338bd3e59f6434408e549df" }
+    "two-key-linux-x86_64": { "sha256": "9c0af2bf1caafaeba604088966ab3b116a8ceaa85ba7f8e5b58632ef982434b4" },
+    "two-key-linux-aarch64": { "sha256": "295aa31cfe3ec0f4851907c7c581af02503f584cde77bddbe7c3285ad613bd7b" },
+    "two-key-macos-x86_64": { "sha256": "77a6b87c4c9b3a686477ebfe4859cc3bde38aafa7aa38d33218983ae0ffedd2f" },
+    "two-key-macos-aarch64": { "sha256": "3602f339d637088d9309a559458d28dca404292b5740d9de343ceba0a4f58256" },
+    "two-key-windows-x86_64.exe": { "sha256": "81b6303ce900582dd3f0b3d01b26910d73fbf42c0fd1b84e6cd90b156ec101fc" },
+    "two-key-windows-aarch64.exe": { "sha256": "5b93c9e1b75b4acb9f0ac936dd043426e0b5354dc7868ffd07a4ba7b37ede0c0" },
+    "libtwo_key_core-linux-x86_64.so": { "sha256": "863b8c6ee1507801991cc9a53648bcb212cb5848940318e7d5482b711a4ea443" },
+    "libtwo_key_core-linux-aarch64.so": { "sha256": "0f393705d49ae9578b0cbf7cafeda9220ded53d328412c71b48c843e0d106f38" },
+    "libtwo_key_core-macos-x86_64.dylib": { "sha256": "e0cd87ff4dbd1c2e0d1e58555e6be08c18ceae5dbf22836a8c6dea4bc8a3fa44" },
+    "libtwo_key_core-macos-aarch64.dylib": { "sha256": "79cbc719cc128e4413a8a15a3863838f3f28d682fc8d767ec506b2437c0407c5" },
+    "two_key_core-windows-x86_64.dll": { "sha256": "ab08886a69da78882285c02e314e8d33db3c30ffb2f4c77d848744489f076ebf" },
+    "two_key_core-windows-aarch64.dll": { "sha256": "65058d82af14719cb1bab44376eea44af26ef2e0d3d20498bfd661086680fac2" }
   }
 }
