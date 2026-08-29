@@ -10,25 +10,23 @@ Using-party hosts must gate features from a cached, verified license without see
 
 ### Startup
 
-1. `BillingSdk.configureFrom(config)`
-2. `BillingSession` load persisted account + license JWT
-3. Verify offline (ES256, `exp`, optional device SKI)
-4. Expose `LicenseEntitlements` from verified claims
-5. If online: `syncIfLicenseChanged` (ETag); start poll / foreground sync
+See [host-startup.md](./host-startup.md).
 
-Missing or invalid license → empty entitlements (host takes alternate paths).
+### `LicenseEntitlements` (API)
 
-### `LicenseEntitlements` (proposed API)
+Primary contract: **Product → Resources → Quantity** (same product summed across offerings/plans).
 
 | Method | Behavior |
 |--------|----------|
+| `byProduct` | Map productId → resourceKey → quantity |
+| `resourceForProduct(productId, key)` | Quantity for one product |
+| `resourceInt(key)` / `maxDevices()` | Sum across all products |
 | `hasAnyActiveSubscription` | Any sub active/trialing and not past `valid_until` |
-| `hasOffering(code)` / `hasAddon(code)` / `hasProduct(code)` | From entitlements / offerings |
-| `resourceInt(key)` / `maxDevices()` | Prefer top-level `entitlements` |
-| `expiryForOffering` / `earliestExpiry` | From `subscriptions[].valid_until` |
+| `hasOffering(code)` / `hasAddon(code)` / `hasProduct(id)` | From entitlements / offerings |
+| `expiryForOffering` / `expiryForAddon` / `earliestExpiry` | From `subscriptions[].valid_until` |
 | `allowsDevice(localSki)` | Existing device bind rules |
 
-**Must not** expose or require price/currency for access decisions.
+Prefer server `entitlements.by_product` when `payload_version >= 3`. **Must not** expose or require price/currency for access decisions.
 
 ### Payload dual-read
 
@@ -45,10 +43,15 @@ else → alternate / locked / free path (+ catalog/portal for purchase CTA)
 ## Tasks (SDK repo)
 
 - [x] Conformance fixture `license_payload_v3.json`
-- [ ] Dart / Rust core / browser parsers + entitlements helpers
-- [ ] Session docs: cache-at-start + gate guidance
-- [ ] Tests: stacking aggregation trust server entitlements; v2 fallback; no amount fields required
+- [x] Dart / Rust core / browser parsers + entitlements helpers
+- [x] Session docs: cache-at-start + gate guidance
+- [x] Tests: stacking aggregation trust server entitlements; v2 fallback; no amount fields required
 
 ## Status
 
-Server OpenSpec `add-product-offerings-license-v3` is partially applied (schema, issuer v3, catalog attachments, quantity absorb). SDK parse/API and host gates remain.
+Server + SDK Product→Resources→Quantity contract done. Host gates (secMail 5.x) wired to `payload.entitlements`.
+
+## Non-goals
+
+- Checkout or invoice clients in using-party SDK
+- Implementing quantity bump fulfillment (server-only)

@@ -1,12 +1,14 @@
 import 'billing_subscription.dart';
 import 'jwt_payload_keys.dart';
+import 'license_entitlements.dart';
 import 'paying_party.dart';
 
 /// Default expiry when JWT has no exp claim.
 final DateTime _defaultExpiresAt = DateTime.utc(2099, 12, 31);
 
 /// Decoded billing license token payload from the signed JWT.
-/// Flat shape: payload_version, iss, aud, iat, exp, paying_party, subscriptions[].
+/// Flat shape: payload_version, iss, aud, iat, exp, paying_party, subscriptions[]
+/// (+ entitlements when payload_version >= 3).
 class BillingTokenPayload {
   const BillingTokenPayload({
     required this.payloadVersion,
@@ -16,6 +18,7 @@ class BillingTokenPayload {
     this.issuedAt,
     this.issuer,
     this.audience,
+    this.entitlementsJson,
   });
 
   final int payloadVersion;
@@ -26,30 +29,44 @@ class BillingTokenPayload {
   final PayingParty payingParty;
   final List<BillingSubscription> subscriptions;
 
+  /// Raw server `entitlements` object when present (payload_version >= 3).
+  final Map<String, dynamic>? entitlementsJson;
+
   /// Parses from JWT payload map. Throws [FormatException] if required fields are missing/invalid.
   factory BillingTokenPayload.fromJson(Map<String, dynamic> json) {
     final version = parseInt(getKey(json, 'payload_version', 'payloadVersion'));
-    if (version == null)
+    if (version == null) {
       throw FormatException('payload_version (number) required.');
+    }
     final exp = parseInt(json['exp']);
     final expiresAt = exp != null
         ? dateTimeFromUnixSeconds(exp)
         : _defaultExpiresAt;
     final payingPartyRaw = getKey(json, 'paying_party', 'payingParty');
-    if (payingPartyRaw is! Map<String, dynamic>)
+    if (payingPartyRaw is! Map<String, dynamic>) {
       throw FormatException('paying_party object required.');
+    }
     final payingParty = PayingParty.fromJson(payingPartyRaw);
     final subscriptionsRaw = json['subscriptions'];
-    if (subscriptionsRaw is! List)
+    if (subscriptionsRaw is! List) {
       throw FormatException('subscriptions array required.');
+    }
     final subscriptions = <BillingSubscription>[];
     for (var i = 0; i < subscriptionsRaw.length; i++) {
       final item = subscriptionsRaw[i];
-      if (item is! Map<String, dynamic>)
+      if (item is! Map<String, dynamic>) {
         throw FormatException('subscriptions[$i] must be an object.');
+      }
       subscriptions.add(BillingSubscription.fromJson(item));
     }
     final iat = parseInt(json['iat']);
+    final entitlementsRaw = json['entitlements'];
+    Map<String, dynamic>? entitlementsJson;
+    if (entitlementsRaw is Map<String, dynamic>) {
+      entitlementsJson = entitlementsRaw;
+    } else if (entitlementsRaw is Map) {
+      entitlementsJson = Map<String, dynamic>.from(entitlementsRaw);
+    }
     return BillingTokenPayload(
       payloadVersion: version,
       expiresAt: expiresAt,
@@ -58,8 +75,13 @@ class BillingTokenPayload {
       issuedAt: iat != null ? dateTimeFromUnixSeconds(iat) : null,
       issuer: json['iss'] is String ? json['iss'] as String : null,
       audience: json['aud'] is String ? json['aud'] as String : null,
+      entitlementsJson: entitlementsJson,
     );
   }
+
+  /// Feature-gate view (server entitlements when v3, else derived).
+  LicenseEntitlements get entitlements =>
+      LicenseEntitlements.fromPayload(this);
 
   /// Convenience alias for [payingParty] (e.g. when migrating from mailbox-based payloads).
   PayingParty? get firstPayingParty => payingParty;
@@ -81,17 +103,13 @@ class BillingTokenPayload {
       subscriptions.any((s) => s.subscriptionId == subscriptionId);
 
   /// Whether the payload has any subscription for the given plan (add-on check).
-  bool hasPlan(String planId) =>
-      subscriptions.any((s) => s.planId == planId && s.isActive);
+  bool hasPlan(String planId) => entitlements.hasPlan(planId);
 
   /// Whether the payload has any subscription for the given product.
-  bool hasProduct(String productId) =>
-      subscriptions.any((s) => s.productId == productId && s.isActive);
+  bool hasProduct(String productId) => entitlements.hasProduct(productId);
 
   /// Whether the payload has an active subscription for the given add-on code.
-  bool hasAddon(String addonCode) => subscriptions.any(
-        (s) => s.isActive && s.addonCode == addonCode,
-      );
+  bool hasAddon(String addonCode) => entitlements.hasAddon(addonCode);
 
   /// Whether the token is still valid (not expired).
   bool get isExpired => DateTime.now().isAfter(expiresAt);
@@ -116,9 +134,9 @@ class BillingTokenPayload {
 
   @override
   int get hashCode => Object.hash(
-    payloadVersion,
-    expiresAt,
-    payingParty,
-    Object.hashAll(subscriptions),
-  );
+        payloadVersion,
+        expiresAt,
+        payingParty,
+        Object.hashAll(subscriptions),
+      );
 }

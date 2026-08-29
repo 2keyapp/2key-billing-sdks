@@ -36,7 +36,7 @@ bool billingSubscriptionMatchesAddonRef(
   );
 }
 
-/// First matching active subscription renewal date, if any.
+/// First matching active subscription renewal / valid-until date, if any.
 DateTime? billingRenewalForAddonRef(
   BillingTokenPayload? payload,
   String addonRef, {
@@ -44,6 +44,8 @@ DateTime? billingRenewalForAddonRef(
   Map<String, List<String>> planNameHints = defaultAddonRefPlanNameHints,
 }) {
   if (payload == null) return null;
+  final fromEntitlements = payload.entitlements.expiryForAddon(addonRef);
+  if (fromEntitlements != null) return fromEntitlements;
   for (final sub in payload.subscriptions) {
     if (!billingSubscriptionMatchesAddonRef(
       sub,
@@ -65,6 +67,11 @@ bool billingHasActiveAddonRef(
   Map<String, List<String>> planNameHints = defaultAddonRefPlanNameHints,
 }) {
   if (payload == null) return false;
+  // Prefer Product→Resources entitlements (v3 addons list / offering resources).
+  if (payload.entitlements.hasAddon(addonRef) &&
+      payload.entitlements.hasAnyActiveSubscription) {
+    return true;
+  }
   return payload.subscriptions.any(
     (sub) => billingSubscriptionMatchesAddonRef(
       sub,

@@ -74,9 +74,10 @@ class Plan {
   }
 }
 
-/// Server billing interval values (`monthly`, `annual`).
+/// Server billing interval values (`monthly`, `quarterly`, `annual`).
 abstract final class BillingInterval {
   static const monthly = 'monthly';
+  static const quarterly = 'quarterly';
   static const annual = 'annual';
   static const yearly = annual;
 }
