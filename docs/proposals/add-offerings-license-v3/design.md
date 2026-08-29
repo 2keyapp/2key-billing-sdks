@@ -44,12 +44,11 @@ else → alternate / locked / free path (+ catalog/portal for purchase CTA)
 
 ## Tasks (SDK repo)
 
-- [ ] Conformance fixture `license_payload_v3.json`
+- [x] Conformance fixture `license_payload_v3.json`
 - [ ] Dart / Rust core / browser parsers + entitlements helpers
 - [ ] Session docs: cache-at-start + gate guidance
 - [ ] Tests: stacking aggregation trust server entitlements; v2 fallback; no amount fields required
 
-## Non-goals
+## Status
 
-- Checkout or invoice clients in using-party SDK
-- Implementing quantity bump fulfillment (server-only)
+Server OpenSpec `add-product-offerings-license-v3` is partially applied (schema, issuer v3, catalog attachments, quantity absorb). SDK parse/API and host gates remain.
