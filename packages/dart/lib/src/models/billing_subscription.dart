@@ -6,11 +6,13 @@ class LicenseDeviceClaim {
     required this.ski,
     required this.deviceId,
     this.platform,
+    this.friendlyName,
   });
 
   final String ski;
   final String deviceId;
   final String? platform;
+  final String? friendlyName;
 
   factory LicenseDeviceClaim.fromJson(Map<String, dynamic> json) {
     final ski = json['ski'];
@@ -18,10 +20,14 @@ class LicenseDeviceClaim {
     if (ski is! String || ski.isEmpty) {
       throw FormatException('devices[].ski required');
     }
+    final friendly = json['friendly_name'] ?? json['friendlyName'];
     return LicenseDeviceClaim(
       ski: ski,
       deviceId: deviceId is String ? deviceId : '',
       platform: json['platform'] is String ? json['platform'] as String : null,
+      friendlyName: friendly is String && friendly.trim().isNotEmpty
+          ? friendly.trim()
+          : null,
     );
   }
 }

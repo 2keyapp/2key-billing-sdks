@@ -247,6 +247,7 @@ class BillingApiClient {
   Future<Map<String, dynamic>> bindLicenseDevice({
     required String authorizationToken,
     required Map<String, dynamic> publicJwk,
+    required String friendlyName,
     String? subscriptionId,
     String? replaceSki,
     String platform = 'desktop',
@@ -266,6 +267,7 @@ class BillingApiClient {
       },
       body: jsonEncode({
         'publicJwk': publicJwk,
+        'friendlyName': friendlyName,
         if (subscriptionId != null) 'subscriptionId': subscriptionId,
         if (replaceSki != null) 'replaceSki': replaceSki,
         'platform': platform,
