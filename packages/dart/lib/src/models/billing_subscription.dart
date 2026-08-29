@@ -1,5 +1,31 @@
 import 'jwt_payload_keys.dart';
 
+/// Bound app_client device claim on a license subscription.
+class LicenseDeviceClaim {
+  const LicenseDeviceClaim({
+    required this.ski,
+    required this.deviceId,
+    this.platform,
+  });
+
+  final String ski;
+  final String deviceId;
+  final String? platform;
+
+  factory LicenseDeviceClaim.fromJson(Map<String, dynamic> json) {
+    final ski = json['ski'];
+    final deviceId = json['device_id'] ?? json['deviceId'];
+    if (ski is! String || ski.isEmpty) {
+      throw FormatException('devices[].ski required');
+    }
+    return LicenseDeviceClaim(
+      ski: ski,
+      deviceId: deviceId is String ? deviceId : '',
+      platform: json['platform'] is String ? json['platform'] as String : null,
+    );
+  }
+}
+
 /// A single subscription in the billing token payload.
 /// Each element of top-level `subscriptions[]`.
 class BillingSubscription {
@@ -14,6 +40,9 @@ class BillingSubscription {
     this.validFrom,
     this.billingInterval,
     this.addonCode,
+    this.memberId,
+    this.maxDevices,
+    this.devices = const [],
     this.usingPartyIdentityProvider,
     this.usingPartyIdentitySubject,
     this.usingPartyEmail,
@@ -30,6 +59,9 @@ class BillingSubscription {
   final DateTime? validFrom;
   final String? billingInterval;
   final String? addonCode;
+  final String? memberId;
+  final int? maxDevices;
+  final List<LicenseDeviceClaim> devices;
   final String? usingPartyIdentityProvider;
   final String? usingPartyIdentitySubject;
   final String? usingPartyEmail;
@@ -71,6 +103,8 @@ class BillingSubscription {
       'assignedUserPartyId',
     );
     final addon = getKey(json, 'addon_code', 'addonCode');
+    final memberId = getKey(json, 'member_id', 'memberId');
+    final maxDevicesRaw = getKey(json, 'max_devices', 'maxDevices');
     final usingProvider = getKey(
       json,
       'using_party_identity_provider',
@@ -82,6 +116,19 @@ class BillingSubscription {
       'usingPartyIdentitySubject',
     );
     final usingEmail = getKey(json, 'using_party_email', 'usingPartyEmail');
+    final devicesRaw = json['devices'];
+    final devices = <LicenseDeviceClaim>[];
+    if (devicesRaw is List) {
+      for (final item in devicesRaw) {
+        if (item is Map<String, dynamic>) {
+          devices.add(LicenseDeviceClaim.fromJson(item));
+        } else if (item is Map) {
+          devices.add(
+            LicenseDeviceClaim.fromJson(Map<String, dynamic>.from(item)),
+          );
+        }
+      }
+    }
     return BillingSubscription(
       subscriptionId: subscriptionId,
       planId: planId,
@@ -98,6 +145,9 @@ class BillingSubscription {
           ? billingIntervalRaw.trim()
           : null,
       addonCode: addon is String && addon.isNotEmpty ? addon : null,
+      memberId: memberId is String && memberId.isNotEmpty ? memberId : null,
+      maxDevices: parseInt(maxDevicesRaw),
+      devices: devices,
       usingPartyIdentityProvider:
           usingProvider is String && usingProvider.isNotEmpty ? usingProvider : null,
       usingPartyIdentitySubject:
@@ -123,4 +173,10 @@ class BillingSubscription {
 
   /// Whether the validity period has ended (now > valid_until).
   bool get isPeriodEnded => DateTime.now().isAfter(validUntil);
+
+  /// True when [localSki] is listed, or when no devices are bound yet.
+  bool allowsDevice(String localSki) {
+    if (devices.isEmpty) return true;
+    return devices.any((d) => d.ski == localSki);
+  }
 }

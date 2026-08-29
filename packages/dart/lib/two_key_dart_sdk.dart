@@ -31,6 +31,7 @@ export 'src/session/license_entitlements.dart';
 export 'src/session/secure_billing_session_store.dart';
 export 'src/keys/public_key_loader_asset.dart' show loadPublicKeyFromAsset;
 export 'src/crypto/device_crypto.dart';
+export 'src/device/license_device_keystore.dart';
 export 'src/machine/device_identity_store.dart';
 export 'src/machine/enroll_flow.dart';
 export 'src/machine/agent_entitlement_flow.dart';

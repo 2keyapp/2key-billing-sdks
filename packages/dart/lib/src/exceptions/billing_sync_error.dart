@@ -8,6 +8,7 @@ enum BillingSyncErrorKind {
   forbidden,
   notFound,
   badRequest,
+  conflict,
   serverError,
   invalidResponse,
   configuration,
@@ -21,12 +22,14 @@ class BillingSyncError {
     required this.userMessage,
     this.technicalDetail,
     this.statusCode,
+    this.details,
   });
 
   final BillingSyncErrorKind kind;
   final String userMessage;
   final String? technicalDetail;
   final int? statusCode;
+  final Object? details;
 
   @override
   String toString() => userMessage;
@@ -68,6 +71,13 @@ BillingSyncError billingSyncErrorFromHttp({
     404 => BillingSyncError(
       kind: BillingSyncErrorKind.notFound,
       userMessage: 'No billing account or subscriptions found for this user.',
+      technicalDetail: technical,
+      statusCode: statusCode,
+    ),
+    409 => BillingSyncError(
+      kind: BillingSyncErrorKind.conflict,
+      userMessage: serverHint ??
+          'Device limit reached. Remove or replace an existing device.',
       technicalDetail: technical,
       statusCode: statusCode,
     ),

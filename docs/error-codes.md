@@ -11,6 +11,7 @@ Stable snake_case strings returned by `two-key-core` (`ErrorCode::as_str`) and m
 | `license_invalid` | Bad ES256 signature / alg |
 | `license_expired` | JWT `exp` passed |
 | `license_malformed` | Missing/invalid claims or JWT shape |
+| `license_device_mismatch` | License lists devices but local SKI is not among them |
 | `not_modified` | License HTTP 304 / ETag hit without usable cache |
 | `invalid_response` | Unexpected JSON from server |
 | `unknown` | Unclassified |

@@ -243,6 +243,55 @@ class BillingApiClient {
     }
   }
 
+  /// POST `{origin}/api/v1/license/devices` — bind public JWK to a seat.
+  Future<Map<String, dynamic>> bindLicenseDevice({
+    required String authorizationToken,
+    required Map<String, dynamic> publicJwk,
+    String? subscriptionId,
+    String? replaceSki,
+    String platform = 'desktop',
+    bool issueLicense = true,
+  }) async {
+    final raw = authorizationToken.trim();
+    if (raw.isEmpty) {
+      throw StateError('Authorization token is required.');
+    }
+    final token = raw.toLowerCase().startsWith('bearer ') ? raw : 'Bearer $raw';
+    final uri = Uri.parse('${_baseUrl}api/v1/license/devices');
+    final response = await _http.post(
+      uri,
+      headers: {
+        'Authorization': token,
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'publicJwk': publicJwk,
+        if (subscriptionId != null) 'subscriptionId': subscriptionId,
+        if (replaceSki != null) 'replaceSki': replaceSki,
+        'platform': platform,
+        'issueLicense': issueLicense,
+      }),
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>? ?? {};
+    if (response.statusCode == 409) {
+      final err = BillingSyncError(
+        kind: BillingSyncErrorKind.conflict,
+        userMessage: body['error'] as String? ?? 'Device limit reached',
+        technicalDetail: body['code'] as String? ?? 'DEVICE_LIMIT_REACHED',
+        details: body['details'],
+      );
+      throw err;
+    }
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw billingSyncErrorFromHttp(
+        statusCode: response.statusCode,
+        operation: 'bindLicenseDevice',
+        responseBody: response.body,
+      );
+    }
+    return _unwrapData(body);
+  }
+
   void close() => _http.close();
 
   static String? _readEtag(Map<String, String> headers) {
