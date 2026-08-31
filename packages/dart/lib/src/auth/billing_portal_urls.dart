@@ -74,6 +74,15 @@ class BillingPortalUrls {
     );
   }
 
+  /// Bind-org screen after SSO when the session has no active organization.
+  Uri bindOrg({String? slug}) {
+    final value = slug?.trim();
+    return Uri.parse('$_base/auth/bind-org').replace(
+      queryParameters:
+          value == null || value.isEmpty ? null : {'slug': value},
+    );
+  }
+
   /// OAuth authorize entry for portal login (PKCE handled by portal or app).
   Uri authLogin({required String billingAuthBaseUrl, required String state}) {
     final auth = billingAuthBaseUrl.endsWith('/')
