@@ -83,6 +83,19 @@ class BillingPortalUrls {
     );
   }
 
+  /// SPA Settings → Devices (canonical bind / list / revoke).
+  Uri devices() {
+    return Uri.parse('$_base/settings/devices');
+  }
+
+  /// No-JS fallback hosted on the billing API origin (`GET /portal/devices`).
+  Uri devicesApiFallback({required String billingApiBaseUrl}) {
+    final api = billingApiBaseUrl.endsWith('/')
+        ? billingApiBaseUrl.substring(0, billingApiBaseUrl.length - 1)
+        : billingApiBaseUrl;
+    return Uri.parse('$api/portal/devices');
+  }
+
   /// OAuth authorize entry for portal login (PKCE handled by portal or app).
   Uri authLogin({required String billingAuthBaseUrl, required String state}) {
     final auth = billingAuthBaseUrl.endsWith('/')

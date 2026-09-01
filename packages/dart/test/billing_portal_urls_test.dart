@@ -41,6 +41,24 @@ void main() {
       );
     });
 
+    test('devices points at the SPA settings page', () {
+      expect(
+        urls.devices().toString(),
+        'https://portal.example.com/settings/devices',
+      );
+    });
+
+    test('devicesApiFallback keeps billing /portal/devices', () {
+      expect(
+        urls
+            .devicesApiFallback(
+              billingApiBaseUrl: 'https://billing.example.com',
+            )
+            .toString(),
+        'https://billing.example.com/portal/devices',
+      );
+    });
+
     test('custom shopPath is respected', () {
       const custom = BillingPortalUrls(
         portalBaseUrl: 'https://portal.example.com',
