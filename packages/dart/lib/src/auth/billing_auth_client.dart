@@ -205,6 +205,13 @@ class BillingAuthClient {
   /// Re-mints the billing API JWT when the session is still valid.
   Future<BillingAuthTokens> refreshApiToken() => acquireApiToken();
 
+  /// Binds the current session to an organization slug (`me` by default).
+  Future<({String organizationId, String slug, String name, String role})>
+      bindOrganization({String slug = 'me'}) async {
+    final cookie = await getSessionCookie();
+    return _tokenMint.bindFromSessionCookie(cookie, slug: slug);
+  }
+
   // ---------------------------------------------------------------------------
   // Portal session handoff (Flutter → browser)
   // ---------------------------------------------------------------------------
