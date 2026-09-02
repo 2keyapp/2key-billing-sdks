@@ -1,0 +1,57 @@
+{
+  "name": "@2key/browser-sdk",
+  "version": "0.1.0",
+  "description": "2key unified browser SDK — AuthN + AuthZ + Billing (TypeScript parity with native Rust core)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./auth": {
+      "types": "./dist/auth/index.d.ts",
+      "import": "./dist/auth/index.js",
+      "default": "./dist/auth/index.js"
+    },
+    "./billing": {
+      "types": "./dist/billing/index.d.ts",
+      "import": "./dist/billing/index.js",
+      "default": "./dist/billing/index.js"
+    },
+    "./authorize": {
+      "types": "./dist/authorize.d.ts",
+      "import": "./dist/authorize.js",
+      "default": "./dist/authorize.js"
+    },
+    "./dp": {
+      "types": "./dist/dp.d.ts",
+      "import": "./dist/dp.js",
+      "default": "./dist/dp.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test src/**/*.test.ts"
+  },
+  "dependencies": {
+    "@2key/dp-authorize": "workspace:*",
+    "@2key/dp-ts": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "Apache-2.0"
+}

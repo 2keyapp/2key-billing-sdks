@@ -24,10 +24,13 @@ All `2key_*_sdk` packages and `two-key-core` must pass the shared checklist and 
 | Path | Purpose |
 |------|---------|
 | `conformance/fixtures/license_payload_v1.json` | Canonical claim names + sample subscriptions |
+| `conformance/fixtures/license_payload_v3.json` | Offerings license payload |
+| `conformance/dp-authz/fixtures.json` | AuthZ authorize / subset / actionCovers vectors |
 
-Rust: `cargo test -p two-key-core` signs ES256 JWTs against this fixture.
+Rust: `cargo test -p two-key-core` / `dp-rust` in `2key-core-sdk` against the same fixtures.
 
-TypeScript: parse the same JSON and verify claim field names; sign/verify with Web Crypto in package tests.
+TypeScript: `@2key/browser-sdk` + `@2key/dp-authorize` tests under `packages/javascript`.
+Dart: `cd packages/dart && flutter test`.
 
 ## Error codes
 
@@ -36,5 +39,6 @@ See `docs/error-codes.md`. Wrappers must map to the same snake_case strings.
 ## References
 
 - Native: private `2key-core-sdk` crate `two-key-core` (binaries only in public tree)
-- Browser: [`2key-browser-sdk`](https://github.com/2keyapp/2key-browser-sdk) (`@2key/browser-sdk`)
+- Browser: `@2key/browser-sdk` (`packages/javascript/packages/browser-sdk`)
+- Dart: `two_key_dart_sdk` (`packages/dart`)
 - OpenAPI: `openapi/2key-billing.yaml`

@@ -7,8 +7,8 @@ Dart (`two-key-core` C ABI / facade module) via **UniFFI**.
 
 ```
 bindings/uniffi/          # this folder — IDL + generate scripts (public)
-packages/kotlin/          # 2key_kotlin_sdk (later)
-packages/swift/           # 2key_swift_sdk (later)
+packages/kotlin/          # 2key_kotlin_sdk (later language root)
+packages/swift/           # 2key_swift_sdk (later language root)
 ```
 
 Private source of truth remains in **`2key-core-sdk`**:
@@ -36,5 +36,5 @@ Private source of truth remains in **`2key-core-sdk`**:
 | `2key_kotlin_sdk` / `2key_swift_sdk` | Not started (tasks 8.1–8.2) |
 
 When implementing: add UniFFI to private `two-key-core`, publish artifacts,
-then add thin packages under `packages/kotlin` and `packages/swift` that load
+then add thin language roots `packages/kotlin/` and `packages/swift/` that load
 fetched libs — mirror the Dart pattern.

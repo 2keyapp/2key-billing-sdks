@@ -102,21 +102,18 @@ Auth engines may differ by platform; **billing JWT + license claims must not.**
     auth-protocol.md
     sdk-conformance.md
   conformance/fixtures/
-  crates/
-    2key_core/                      # ★ native reference
-    2key_cli/                       # thin CLI
-  bindings/
-    uniffi/                         # generated / scaffolding
   packages/
     dart/                           # 2key_dart_sdk (FRB wrapper)
-    ts/                             # @2key/ts-sdk (browser)
-    react/                          # optional hooks
-    node/                           # optional service/M2M helpers
+    javascript/                     # @2key/browser-sdk (pnpm workspace)
+  bindings/
+    uniffi/                         # generated / scaffolding
   examples/
     flutter_app/
     browser_vite/
     cli_smoke/
 ```
+
+Native `crates/2key_core` and `2key_cli` stay in **private** `2key-core-sdk`; this public repo fetches binaries.
 
 Until the monorepo exists, proposal artifacts live in `billing_dart_sdk/docs/proposals/add-rust-core-sdk/`.
 

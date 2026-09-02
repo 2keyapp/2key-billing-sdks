@@ -6,11 +6,12 @@
 /target/
 **/*.rs.bk
 
-# Node / TS
+# JavaScript / TypeScript
 node_modules/
-packages/ts/dist/
-packages/ts/*.tsbuildinfo
+dist/
+*.tsbuildinfo
 .npm/
+.pnpm-store/
 
 # Dart / Flutter
 packages/dart/.dart_tool/
@@ -31,3 +32,4 @@ Thumbs.db
 !packages/dart/keys/**/*.pem
 .env
 .env.*
+!.env.example
