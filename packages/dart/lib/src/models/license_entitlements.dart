@@ -1,3 +1,4 @@
+import '../catalog/offering_catalog.dart';
 import 'billing_subscription.dart';
 import 'billing_token_payload.dart';
 import 'jwt_payload_keys.dart';
@@ -23,7 +24,13 @@ class LicenseEntitlements {
   final Set<String> offeringCodes;
 
   /// Build from a verified [BillingTokenPayload].
-  factory LicenseEntitlements.fromPayload(BillingTokenPayload payload) {
+  ///
+  /// When [catalog] is set, product / offering / add-on sets are intersected
+  /// with the host catalog (fail-closed). Unknown JWT codes are dropped.
+  factory LicenseEntitlements.fromPayload(
+    BillingTokenPayload payload, {
+    OfferingCatalog? catalog,
+  }) {
     final byProduct = <String, Map<String, int>>{};
     final addons = <String>{};
     final offerings = <String>{};
@@ -107,6 +114,12 @@ class LicenseEntitlements {
           s.productId.isNotEmpty) {
         addResource(s.productId, 'max_devices', s.maxDevices! * q);
       }
+    }
+
+    if (catalog != null) {
+      byProduct.removeWhere((k, _) => !catalog.knowsProduct(k));
+      addons.removeWhere((a) => !catalog.knowsAddon(a));
+      offerings.removeWhere((c) => !catalog.knowsOffering(c));
     }
 
     return LicenseEntitlements._(

@@ -10,6 +10,7 @@ import 'package:two_key_dart_sdk/src/keys/public_key_loader_asset.dart';
 import 'package:two_key_dart_sdk/src/models/billing_stats.dart';
 import 'package:two_key_dart_sdk/src/models/billing_token_error.dart';
 import 'package:two_key_dart_sdk/src/models/billing_token_payload.dart';
+import 'package:two_key_dart_sdk/src/models/license_entitlements.dart';
 
 /// Client SDK for **using-party apps**: auth token → license sync → offline entitlements.
 ///
@@ -181,6 +182,14 @@ class BillingSdk {
   }
 
   static BillingTokenPayload? getPayload() => _currentPayload;
+
+  /// Gate view for the last verified license. Uses [BillingSdkConfig.catalog]
+  /// when [configureFrom] was called with one.
+  static LicenseEntitlements? entitlements() {
+    final payload = _currentPayload;
+    if (payload == null) return null;
+    return LicenseEntitlements.fromPayload(payload, catalog: _config?.catalog);
+  }
 
   static Future<SyncResult> syncFromServer({
     required String authorizationToken,

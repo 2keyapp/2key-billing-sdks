@@ -1,3 +1,4 @@
+import '../catalog/offering_catalog.dart';
 import 'billing_subscription.dart';
 import 'jwt_payload_keys.dart';
 import 'license_entitlements.dart';
@@ -79,9 +80,13 @@ class BillingTokenPayload {
     );
   }
 
-  /// Feature-gate view (server entitlements when v3, else derived).
+  /// Feature-gate view (server entitlements when v3, else derived). JWT-only.
   LicenseEntitlements get entitlements =>
       LicenseEntitlements.fromPayload(this);
+
+  /// Feature-gate view intersected with a host [catalog] (fail-closed).
+  LicenseEntitlements entitlementsAgainst(OfferingCatalog? catalog) =>
+      LicenseEntitlements.fromPayload(this, catalog: catalog);
 
   /// Convenience alias for [payingParty] (e.g. when migrating from mailbox-based payloads).
   PayingParty? get firstPayingParty => payingParty;
