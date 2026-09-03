@@ -20,13 +20,13 @@ Machine enrollment **HTTP** lives in billing-sdks. Device **x.509 / Ed25519** ce
 - [ ] Core `two_key_crypto_*` C ABI + lockfile bump
 - [ ] Dart `DeviceCrypto` FRB wrapper
 - [ ] `MachineEnrollFlow` + `AgentEntitlementFlow` + identity store
-- [ ] Extract `billing_http` Rust crate; trim `dp-rust-sdk` HTTP
+- [x] Public `billing_http` crate removed from `2key-billing-sdks` (HTTP is Dart + `@2key/dp-ts`)
 - [ ] Move `@2key/dp-ts` machine-authn HTTP to billing-sdks; browser deprecation shim
 
 ## Verification
 
 | Gate | Command |
 |------|---------|
-| Dart unit | `cd packages/dart && dart test` |
+| Dart unit | `cd packages/dart && flutter test` |
 | Core crypto | `cargo test -p two-key-core` |
 | No HTTP in core | `machine-authn` only via `billing_http` dep in `dp-rust-sdk` |

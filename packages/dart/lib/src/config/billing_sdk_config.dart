@@ -1,3 +1,4 @@
+import '../catalog/offering_catalog.dart';
 import '../session/license_entitlements.dart';
 
 /// Build-time configuration for using-party billing integration.
@@ -15,6 +16,7 @@ class BillingSdkConfig {
     this.shopPath = '/shop',
     this.licensePollInterval = defaultLicensePollInterval,
     this.addonPlanNameHints = const {},
+    this.catalog,
   });
 
   /// Billing server origin (e.g. `https://billing.example.com`).
@@ -48,6 +50,10 @@ class BillingSdkConfig {
   /// Host product plan-name hints for numeric plan IDs in license JWTs.
   /// Empty by default — supply product-specific maps in the host app.
   final Map<String, List<String>> addonPlanNameHints;
+
+  /// Static offerings this binary can gate. Intersected with the verified JWT.
+  /// When null, [LicenseEntitlements] uses JWT claims only.
+  final OfferingCatalog? catalog;
 
   /// Resolved portal origin (explicit [portalBaseUrl] or [apiBaseUrl]).
   String get resolvedPortalBaseUrl {

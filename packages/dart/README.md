@@ -19,6 +19,8 @@ import 'package:two_key_dart_sdk/billing_dart_sdk.dart';
 
 Host apps depend on **this package only** — never `better_auth` or private `two-key-core` source.
 
+Pass an optional [`OfferingCatalog`](lib/src/catalog/offering_catalog.dart) in `BillingSdkConfig.catalog` so `hasProduct` / `hasOffering` / `hasAddon` are fail-closed against the offerings this binary knows. Device bind: `LicenseDeviceKeystore.ensureForAccount` then `BillingApiClient.bindLicenseDevice` / `listLicenseDevices` / `revokeLicenseDevice`.
+
 Native license path can use FFI against a prebuilt core binary from **`2key-core-sdk`** Releases (`scripts/fetch-binaries.*` + `TWOKEY_CORE_LIB`).
 
 See [retire-billing-dart-sdk.md](../../docs/retire-billing-dart-sdk.md).

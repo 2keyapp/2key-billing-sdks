@@ -15,14 +15,15 @@
 8. Portal handoff (paying-party) via one-time token URL when allowed
 ```
 
-## Browser (`@2key/ts-sdk`)
+## Browser (`@2key/browser-sdk`)
 
 | Concern | Behavior |
 |---------|----------|
 | Session | HTTP-only cookies; `credentials: 'include'` on auth + API same-origin (or CORS + trusted origins) |
-| Sign-in | Full-page or popup **redirect** to IdP; return to app origin |
-| Token | Session cookie and/or `GET /api/auth/token` style endpoint for API JWT |
-| Storage | Cookie jar + `localStorage` / IndexedDB for license JWT + ETag (no Keychain) |
+| Sign-in | Email/password (`signInWithEmail`) or full-page/popup **redirect** to IdP; return to app origin |
+| Token | Session cookie and/or `GET /api/auth/token` (`acquireApiToken`) for API JWT |
+| Device | `createBillingClient().ensureDeviceId()` then `POST /api/v1/license/devices` |
+| Storage | Cookie jar + `localStorage` / IndexedDB for license JWT + ETag + device key (no Keychain) |
 | mTLS | Not supported |
 
 Server must allow the SPA origin in Better Auth trusted origins / CORS.

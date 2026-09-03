@@ -1,60 +1,111 @@
-# 2key-billing-sdks
+# 2key SDKs
 
-**Public** monorepo for 2key Billing **native** client distribution (CLI + Dart wrappers).
+Public using-party SDKs for 2key Billing. One repo, one OpenAPI, one fixture set, one CI — language clients stay in lockstep.
 
-## Priority: desktop CLI
+Hosts import **only** the package for their runtime. Never Better Auth, never private `two-key-core` source.
 
-The primary deliverable for operators and desktop integration is the **`two-key` CLI** on **Windows, macOS, and Linux**.
+## Languages
 
-```bash
-# macOS / Linux
-./scripts/fetch-binaries.sh
-./bin/two-key version
+| Runtime | Package | Path | Registry |
+|---------|---------|------|----------|
+| Flutter / Dart | `two_key_dart_sdk` | [`packages/dart`](packages/dart/) | pub (git until published) |
+| Browser / Node | `@2key/browser-sdk` | [`packages/javascript/packages/browser-sdk`](packages/javascript/packages/browser-sdk/) | npm (workspace until published) |
+| Desktop CLI | `two-key` | [`scripts/fetch-binaries.*`](scripts/) | GitHub Release assets |
 
-# Windows (PowerShell)
-.\scripts\fetch-binaries.ps1
-.\bin\two-key.exe version
+Later language roots: `packages/kotlin`, `packages/swift`, `packages/python`. Each consumes `openapi/` + `conformance/`. Do not add a second OpenAPI copy.
+
+## Layout
+
+```
+.
+├── openapi/                      # /api/v1 contract (single source)
+├── conformance/                  # license JWT + AuthZ + machine-authn vectors
+├── packages/
+│   ├── dart/                     # 2key_dart_sdk (FFI → two-key-core binaries)
+│   └── javascript/               # pnpm workspace (never includes dart)
+│       ├── packages/             # @2key/browser-sdk, @2key/dp-*
+│       └── catalogs/             # @2key/catalog-* tenant seeds
+├── scripts/                      # fetch pinned CLI + native libs
+└── bindings/                     # UniFFI notes (Kotlin / Swift later)
 ```
 
-Binaries are built from the **private** [`2key-core-sdk`](https://github.com/2keyapp/2key-core-sdk) repo (Binary Private Core). This public repo does **not** ship `two-key-core` source.
+pnpm’s workspace file lives **inside** `packages/javascript`, so it cannot pick up Dart. Flutter git path stays `packages/dart`. Shared truth stays at the repo root.
 
-| Component | Path | Role |
-|-----------|------|------|
-| **CLI install** | `scripts/fetch-binaries.*`, `bin/` | Download pinned `two-key` + optional `libtwo_key_core` |
-| **Binary lock** | `core-binaries.lock.json` | Exact version + checksums |
-| **2key_dart_sdk** | `packages/dart` | Flutter/Dart SDK (canonical) |
-| OpenAPI | `openapi/2key-billing.yaml` | `/api/v1` contract |
-| Conformance | `conformance/fixtures` | Shared JWT claim fixtures |
+Rust core source is **not** in this repo. Fetch binaries; see [`crates/README.md`](crates/README.md).
 
-**Browser / TypeScript SDK** moved to [`2key-browser-sdk`](https://github.com/2keyapp/2key-browser-sdk)
-(`@2key/browser-sdk` — AuthN + AuthZ + Billing). Do not add a TS product SDK here.
+## Shared contract
 
-Host apps depend on **`2key_<lang>_sdk` / `@2key/browser-sdk` only** — never on Better Auth or private core source.
+A change to a claim name, error code, or `/api/v1` path is **one PR**. CI runs Dart and JavaScript on every change. Both must pass.
 
-## Quick start
+| Artifact | Role |
+|----------|------|
+| [`openapi/2key-billing.yaml`](openapi/2key-billing.yaml) | HTTP contract |
+| [`conformance/fixtures/`](conformance/fixtures/) | License JWT claims (v1 + v3), machine enroll, agent token |
+| [`conformance/dp-authz/`](conformance/dp-authz/) | AuthZ authorize / subset vectors |
+| [`docs/error-codes.md`](docs/error-codes.md) | Stable snake_case codes |
+
+Runtimes stay different: Dart is FFI to `two-key-core`; JavaScript is TypeScript + Web Crypto. They share fixtures and names, not binaries.
+
+## Develop
 
 ```bash
-# CLI (recommended)
+# All language suites (requires Flutter + pnpm 9 + Node 20+)
+make test
+
+# Dart / Flutter
+cd packages/dart && flutter pub get && flutter test
+
+# JavaScript / TypeScript
+cd packages/javascript && pnpm install && pnpm run ci
+
+# CLI binaries (from private 2key-core-sdk releases)
 ./scripts/fetch-binaries.sh   # or fetch-binaries.ps1 on Windows
 ./bin/two-key --help
-
-# Dart SDK
-cd packages/dart && dart pub get && dart test
-
-# Browser SDK (separate repo)
-# https://github.com/2keyapp/2key-browser-sdk
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Hosts
+
+```yaml
+# Flutter
+dependencies:
+  two_key_dart_sdk:
+    git:
+      url: https://github.com/2keyapp/2key-billing-sdks.git
+      path: packages/dart
+      ref: <PINNED_SHA>
+```
+
+```bash
+# Browser (when published)
+pnpm add @2key/browser-sdk
+
+# Until npm publish — pnpm git subdirectory
+pnpm add github:2keyapp/2key-billing-sdks#path:packages/javascript/packages/browser-sdk
+```
+
+```ts
+import { acquireApiToken, verifyLicenseJwt, authorize } from "@2key/browser-sdk";
+```
+
+Outlook add-in: [docs/office-add-in-embed.md](docs/office-add-in-embed.md). Portal: [docs/portal-migration.md](docs/portal-migration.md).
+
+## Related repos (not this tree)
+
+| Repo | Role |
+|------|------|
+| `2keyapp/2key-billing` | Private Auth + Billing server |
+| `2keyapp/2key-core-sdk` | Private Rust core + CLI source; this repo fetches binaries |
+| `2keyapp/better-auth` | Auth engine fork — not a product SDK |
+
+The former `2key-browser-sdk` repo is merged here (`packages/javascript/`). Do not add TypeScript packages anywhere else.
 
 ## Docs
 
-- [Architecture (Binary Private Core)](docs/architecture.md)
+- [Architecture](docs/architecture.md)
 - [Host integration](docs/host-integration.md)
-- [CLI](docs/cli.md)
 - [Auth protocol](docs/auth-protocol.md)
 - [SDK conformance](docs/sdk-conformance.md)
-- [Retire `billing_dart_sdk`](docs/retire-billing-dart-sdk.md)
-- Browser portal cutover: [`2key-browser-sdk/docs/portal-migration.md`](https://github.com/2keyapp/2key-browser-sdk/blob/main/docs/portal-migration.md)
-
-## Design north star
-
-**Private `2key-core-sdk` owns native Rust truth and releases binaries; `2key-browser-sdk` owns browser TypeScript truth; this repo distributes the CLI + Dart wrappers; OpenAPI + fixtures own the billing contract.**
+- [CLI](docs/cli.md)
+- [DP AuthZ](docs/DP-AUTHZ.md)

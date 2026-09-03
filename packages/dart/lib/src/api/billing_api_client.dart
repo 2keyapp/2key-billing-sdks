@@ -294,6 +294,57 @@ class BillingApiClient {
     return _unwrapData(body);
   }
 
+  /// GET `{origin}/api/v1/license/devices` — assigned seats and bound devices.
+  Future<Map<String, dynamic>> listLicenseDevices({
+    required String authorizationToken,
+  }) async {
+    final raw = authorizationToken.trim();
+    if (raw.isEmpty) {
+      throw StateError('Authorization token is required.');
+    }
+    final token = raw.toLowerCase().startsWith('bearer ') ? raw : 'Bearer $raw';
+    final uri = Uri.parse('${_baseUrl}api/v1/license/devices');
+    final response = await _http.get(uri, headers: {'Authorization': token});
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw billingSyncErrorFromHttp(
+        statusCode: response.statusCode,
+        operation: 'listLicenseDevices',
+        responseBody: response.body,
+      );
+    }
+    final body = jsonDecode(response.body) as Map<String, dynamic>? ?? {};
+    return _unwrapData(body);
+  }
+
+  /// DELETE `{origin}/api/v1/license/devices/:ski` — revoke a bound device.
+  Future<void> revokeLicenseDevice({
+    required String authorizationToken,
+    required String ski,
+    String? deviceId,
+    String? subscriptionId,
+  }) async {
+    final raw = authorizationToken.trim();
+    if (raw.isEmpty) {
+      throw StateError('Authorization token is required.');
+    }
+    final token = raw.toLowerCase().startsWith('bearer ') ? raw : 'Bearer $raw';
+    final query = <String, String>{
+      if (deviceId != null && deviceId.trim().isNotEmpty) 'deviceId': deviceId.trim(),
+      if (subscriptionId != null && subscriptionId.trim().isNotEmpty)
+        'subscriptionId': subscriptionId.trim(),
+    };
+    final uri = Uri.parse('${_baseUrl}api/v1/license/devices/${Uri.encodeComponent(ski)}')
+        .replace(queryParameters: query.isEmpty ? null : query);
+    final response = await _http.delete(uri, headers: {'Authorization': token});
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw billingSyncErrorFromHttp(
+        statusCode: response.statusCode,
+        operation: 'revokeLicenseDevice',
+        responseBody: response.body,
+      );
+    }
+  }
+
   void close() => _http.close();
 
   static String? _readEtag(Map<String, String> headers) {

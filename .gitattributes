@@ -1,0 +1,4 @@
+# Linguist: language roots, not generated lockfiles as source
+packages/javascript/** linguist-language=TypeScript
+packages/dart/** linguist-language=Dart
+pnpm-lock.yaml linguist-generated=true

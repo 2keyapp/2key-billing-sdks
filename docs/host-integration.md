@@ -1,6 +1,6 @@
 # Host integration — depend only on `2key_<lang>_sdk`
 
-Host apps (Scomm, secMail, billing-portal, CLI consumers) must **never** depend
+Host apps (Scomm, secMail, billing-portal, Outlook, CLI consumers) must **never** depend
 directly on Better Auth, `two-key-core` Rust source, or `@2key/billing-core`.
 
 ## Dart / Flutter
@@ -42,15 +42,65 @@ await BillingSdk.configureFrom(config); // rustCore when lib available
 
 See [retire-billing-dart-sdk.md](retire-billing-dart-sdk.md) and `packages/dart/lib/src/frb/`.
 
-## Browser / SPA
+## Browser / SPA (billing-portal)
 
-TypeScript / browser product SDK: **[`2key-browser-sdk`](https://github.com/2keyapp/2key-browser-sdk)** (`@2key/browser-sdk`).
-
-```ts
-import { acquireApiToken, verifyLicenseJwt, authorize } from "@2key/browser-sdk";
+```bash
+pnpm add @2key/browser-sdk
+# until published:
+pnpm add github:2keyapp/2key-billing-sdks#path:packages/javascript/packages/browser-sdk
 ```
 
-See that repo’s `docs/host-integration.md` and `docs/portal-migration.md`.
+```ts
+import {
+  BillingApiClient,
+  acquireApiToken,
+  verifyLicenseJwt,
+  portalHandoffUrl,
+  shopUrl,
+  authorize,
+} from "@2key/browser-sdk";
+```
+
+Typical browser flow:
+
+1. Better Auth cookie session via redirect (`socialSignInUrl` / host auth client).
+2. `acquireApiToken(config)` → billing JWT (`aud=billing`).
+3. `BillingApiClient.ensureBillingContext` / `fetchLicense` / `fetchPlans`.
+4. `verifyLicenseJwt` offline with the public PEM.
+5. Portal handoff from native: `portalHandoffUrl` + OTT from auth host.
+6. AuthZ: `authorize` / `enforceLocally` before privileged client actions (server always re-checks).
+
+The SPA must **not** import `better-auth` server plugins or private core binaries.
+
+See [portal-migration.md](portal-migration.md) and [auth-protocol.md](auth-protocol.md).
+
+## Outlook add-in (Office.js)
+
+SComm Outlook is a **JS host** of `@2key/browser-sdk`. The JS SDK must match
+`2key_dart_sdk` for DeviceID, signed license populate, and product gates.
+See [office-add-in-embed.md](office-add-in-embed.md).
+
+Production add-in origin: `https://office.scomm.ai`.
+
+```ts
+import {
+  createBillingClient,
+  acquireApiToken,
+  signInWithEmail,
+  fetchOAuthProviders,
+} from "@2key/browser-sdk";
+
+const billing = createBillingClient({
+  apiBaseUrl,
+  publicKeyPem,
+  storagePrefix: "scomm-office",
+  catalog: { productIds: ["prod_mail"], offeringCodes: ["ai_assistant"], addonCodes: ["ai_assistant"] },
+});
+await billing.ensureDeviceId();
+await billing.restore();
+await billing.syncLicense({ accessToken });
+if (!billing.hasProduct("prod_mail")) { /* locked */ }
+```
 
 ## CLI / ops
 
@@ -75,4 +125,4 @@ Pins and checksums: `core-binaries.lock.json`. Source stays in private `2key-cor
 1. Push `better-auth` (`packages/native`, `packages/clients/dart`, upstream-sync).
 2. Run `pnpm run release:branch` in the fork (publishes `#release-native`).
 3. In `2key-billing`: refresh lockfile for `@2key/auth-native`.
-4. In `packages/dart` pubspec: set `path: packages/clients/dart` and pin the new SHA (until then keep `packages/flutter/dart` at the last pre-move SHA).
+4. In `packages/dart` pubspec: set Better Auth `path: packages/clients/dart` and pin the new SHA (until then keep `packages/flutter/dart` at the last pre-move SHA).

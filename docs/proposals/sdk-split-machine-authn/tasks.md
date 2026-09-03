@@ -5,5 +5,5 @@
 3. Core crypto: `two_key_crypto_*` in `2key-core-sdk/crates/2key_core`, bump `core-binaries.lock.json`
 4. Dart crypto: `DeviceCrypto` + `frb_wire.dart` lookups
 5. Dart flows: `device_identity_store`, `MachineEnrollFlow`, `AgentEntitlementFlow`
-6. Trim core HTTP: `crates/billing_http`, refactor `dp-rust-sdk` / `dp-cli`
+6. ~~Trim core HTTP: `crates/billing_http`~~ — public crate removed; HTTP is Dart + `@2key/dp-ts`. Trim `dp-rust-sdk` / `dp-cli` in **private** core if still needed.
 7. Browser TS: `@2key/billing-ts` machine-authn module + browser-sdk re-export shim

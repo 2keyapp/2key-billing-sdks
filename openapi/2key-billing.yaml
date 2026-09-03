@@ -51,6 +51,169 @@ paths:
           description: Not modified (ETag match)
         "401":
           description: Unauthorized
+  /api/v1/license/devices:
+    get:
+      operationId: listLicenseDevices
+      summary: List bound app_client devices for the caller
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Assigned seats and bound devices
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    required: [seats]
+                    properties:
+                      seats:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/LicenseDeviceSeat"
+        "401":
+          description: Unauthorized
+    post:
+      operationId: bindLicenseDevice
+      summary: Bind a license device public key
+      description: |
+        Registers an Ed25519 `publicJwk` (RFC 7638 SKI) on an assigned human seat.
+        Pass `replaceSki` when at `maxDevices`. Set `issueLicense` to include a
+        fresh license JWT in the same response. HTTP 409 `DEVICE_LIMIT_REACHED`
+        when the seat is full.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BindLicenseDeviceRequest"
+      responses:
+        "200":
+          description: Device bound
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/BindLicenseDeviceResult"
+        "400":
+          description: Missing publicJwk
+        "401":
+          description: Unauthorized
+        "409":
+          description: DEVICE_LIMIT_REACHED
+  /api/v1/license/devices/{ski}:
+    delete:
+      operationId: revokeLicenseDevice
+      summary: Revoke a bound app_client device
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: ski
+          required: true
+          schema:
+            type: string
+          description: RFC 7638 JWK thumbprint
+        - in: query
+          name: deviceId
+          schema:
+            type: string
+        - in: query
+          name: subscriptionId
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Device revoked
+        "401":
+          description: Unauthorized
+        "404":
+          description: Device not found
+  /api/auth/sign-in/email:
+    post:
+      operationId: signInEmail
+      summary: Email/password sign-in (Better Auth session cookie)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Session established (Set-Cookie)
+        "401":
+          description: Invalid credentials
+  /api/auth/sign-up/email:
+    post:
+      operationId: signUpEmail
+      summary: Email/password registration (Better Auth session cookie)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, name]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                name:
+                  type: string
+      responses:
+        "200":
+          description: User created and session established
+        "201":
+          description: User created
+  /api/auth/token:
+    get:
+      operationId: acquireApiToken
+      summary: Mint billing API JWT from the auth session
+      responses:
+        "200":
+          description: Bearer token for /api/v1
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                      accessToken:
+                        type: string
+        "401":
+          description: No session
+  /api/auth/.well-known/oauth-providers:
+    get:
+      operationId: listOAuthProviders
+      summary: Discover enabled login methods
+      responses:
+        "200":
+          description: Provider list for login UI
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
   /api/v1/subscriptions/me:
     get:
       operationId: getSubscriptionsMe
@@ -473,6 +636,72 @@ components:
           type: array
           items:
             type: string
+    LicenseDeviceSummary:
+      type: object
+      required: [deviceId, ski, platform]
+      properties:
+        deviceId:
+          type: string
+        ski:
+          type: string
+        platform:
+          type: string
+          enum: [web, ios, android, desktop, unknown]
+        friendlyName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    LicenseDeviceSeat:
+      type: object
+      required: [subscriptionId, memberId, planId, maxDevices, devices]
+      properties:
+        subscriptionId:
+          type: string
+        memberId:
+          type: string
+        planId:
+          type: string
+        planName:
+          type: string
+        addonCode:
+          type: string
+        maxDevices:
+          type: integer
+        devices:
+          type: array
+          items:
+            $ref: "#/components/schemas/LicenseDeviceSummary"
+    BindLicenseDeviceRequest:
+      type: object
+      required: [publicJwk]
+      properties:
+        publicJwk:
+          type: object
+          additionalProperties: true
+        friendlyName:
+          type: string
+        subscriptionId:
+          type: string
+        platform:
+          type: string
+          enum: [web, ios, android, desktop, unknown]
+        replaceSki:
+          type: string
+        issueLicense:
+          type: boolean
+    BindLicenseDeviceResult:
+      type: object
+      required: [device, seat]
+      properties:
+        device:
+          $ref: "#/components/schemas/LicenseDeviceSummary"
+        seat:
+          $ref: "#/components/schemas/LicenseDeviceSeat"
+        replacedSki:
+          type: string
+        signedToken:
+          type: string
     Plan:
       type: object
       required: [id, name, billing_interval, base_price, currency]
