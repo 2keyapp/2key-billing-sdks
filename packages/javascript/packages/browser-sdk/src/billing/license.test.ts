@@ -45,6 +45,8 @@ test("fixture claims parse v3 entitlements (conformance)", () => {
   assert.equal(e.maxDevices, 10);
   assert.equal(e.hasAddon("scomm_connector"), true);
   assert.equal(e.hasOffering("scomm_connector_5"), true);
+  assert.ok(e.addonCodes.includes("scomm_connector"));
+  assert.ok(e.offeringCodes.includes("scomm_connector_5"));
   assert.equal(e.resourceForProduct("prod_mail", "max_devices"), 10);
   assert.equal(e.byProduct.prod_mail?.max_devices, 10);
 });

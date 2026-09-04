@@ -70,7 +70,7 @@ Match Dart. Do not invent a Dart-shaped facade (`BillingSdk` statics); use the s
 1. **DeviceID** — `ensureDeviceId` / keystore (IndexedDB or host store) + `POST /api/v1/license/devices` (bind, `issueLicense`, `replaceSki`, device limit). Parity with `LicenseDeviceKeystore` + `bindLicenseDevice`. Reuse Ed25519 helpers already in `@2key/dp-ts`.
 2. **Signed license** — session orchestrator: restore, ES256 verify, ETag sync, paste-token, optional poll. Lift Office’s local `BillingSession` behaviors under SDK names.
 3. **Gates** — `configure({ catalog })` so `hasProduct` / `hasOffering` / `hasAddon` / `resourceForProduct` are fail-closed against the static list. Conformance: `license_payload_v3.json`.
-4. **AuthN** — email/password, provider discovery, `acquireApiToken`. No Better Auth types exported. Outlook WebViews cannot rely on third-party cookies.
+4. **AuthN** — email/password, provider discovery, `acquireUsingPartyApiToken` (auto-bind `me`). No Better Auth types exported. Outlook WebViews cannot rely on third-party cookies.
 
 Defer: DP `authorize()`, machine mTLS, embedding Rust AuthZ.
 
@@ -101,9 +101,9 @@ IDR stays `@idrto/idr_browser_sdk`. Billing only gates it.
 2. ensureDeviceId
 3. restore cached signed license → paint gates immediately
 4. sign-in if needed (email or Office dialog)
-5. acquireApiToken → bind device if unbound → GET /api/v1/license
+5. acquireUsingPartyApiToken → bind device if unbound → GET /api/v1/license
 6. verifyLicenseJwt → entitlements vs catalog
-7. locked features → shopUrl / portal (prices from GET /plans)
+7. locked features → Settings billing portal URL (prices stay on the portal)
 ```
 
 ## 7. Work order
@@ -126,7 +126,8 @@ IDR stays `@idrto/idr_browser_sdk`. Billing only gates it.
 
 ### C — Billing host
 
-- [ ] CORS / Better Auth trusted origins: `https://office.scomm.ai`, `https://localhost:5173`
+- [x] CORS / Better Auth trusted origins: `https://office.scomm.ai`, `https://localhost:5173`
+- [x] Same-origin Office OAuth start (`/oauth/office-start.html`) + OTT complete (`/oauth/office-complete`) — Outlook cannot use cross-origin `SameSite=Lax` state cookies
 
 ## 8. Out of scope (confirmed)
 

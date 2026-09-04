@@ -253,16 +253,21 @@ class BillingSession {
 
   /// Starts periodic license checks. Polling is a no-op until entitlements exist
   /// and [mode] is [BillingMode.online].
+  ///
+  /// Default interval is [defaultLicensePollInterval] (6 hours), or
+  /// [BillingSdkConfig.licensePollInterval] when [BillingSdk.configureFrom] ran.
   void startLicensePolling({
     required String accountKey,
-    Duration interval = defaultLicensePollInterval,
+    Duration? interval,
   }) {
     if (_mode == BillingMode.offline) {
       stopLicensePolling();
       return;
     }
     _pollingAccountKey = accountKey;
-    _pollInterval = interval;
+    _pollInterval = interval ??
+        BillingSdk.config?.licensePollInterval ??
+        defaultLicensePollInterval;
     _pollTimer?.cancel();
     _pollTimer = null;
     unawaited(_reconcileLicensePolling(accountKey));

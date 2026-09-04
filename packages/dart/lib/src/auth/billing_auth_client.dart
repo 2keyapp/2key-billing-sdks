@@ -2,6 +2,7 @@ import 'package:better_auth/better_auth.dart' as ba;
 
 import '../api/billing_api_client.dart';
 import '../config/billing_sdk_config.dart';
+import '../session/license_entitlements.dart';
 import '../logging/sdk_logger.dart';
 import 'billing_api_token_mint.dart';
 import 'billing_auth_discovery.dart';
@@ -65,7 +66,7 @@ class BillingAuthClient {
         ),
       ),
       sessionOptions: const ba.SessionOptions(
-        refetchInterval: Duration(minutes: 5),
+        refetchInterval: defaultLicensePollInterval,
         refetchOnAppResume: true,
       ),
     );
@@ -104,6 +105,7 @@ class BillingAuthClient {
 
   /// Enables or disables Better Auth's built-in session polling.
   ///
+  /// Default refetch interval is [defaultLicensePollInterval] (6 hours).
   /// Host apps that refresh the session explicitly (app resume, sign-in, token
   /// refresh) should call `setOnline(false)` after construction.
   void setOnline(bool value) => _authClient.setOnline(value);
@@ -197,15 +199,20 @@ class BillingAuthClient {
   // ---------------------------------------------------------------------------
 
   /// Mints a billing API JWT from the current Better Auth session.
+  ///
+  /// Using-party hosts (secMail, Outlook): unbound sessions auto-bind personal
+  /// slug `me`. Paying-party portal still asks for a slug before minting.
   Future<BillingAuthTokens> acquireApiToken() async {
     final cookie = await getSessionCookie();
-    return _tokenMint.mintFromSessionCookie(cookie);
+    return _tokenMint.mintUsingPartyFromSessionCookie(cookie);
   }
 
   /// Re-mints the billing API JWT when the session is still valid.
   Future<BillingAuthTokens> refreshApiToken() => acquireApiToken();
 
   /// Binds the current session to an organization slug (`me` by default).
+  /// Paying-party UIs call this with a company slug. Using-party mint already
+  /// binds `me` inside [acquireApiToken] when the session is unbound.
   Future<({String organizationId, String slug, String name, String role})>
       bindOrganization({String slug = 'me'}) async {
     final cookie = await getSessionCookie();

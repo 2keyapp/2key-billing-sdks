@@ -16,6 +16,28 @@ class BillingApiTokenMint {
   final String authBaseUrl;
   final http.Client _http;
 
+  /// Billing origin for Better Auth CSRF (`Origin` required on cookie POSTs).
+  String get _requestOrigin {
+    final parsed = Uri.tryParse(authBaseUrl);
+    if (parsed == null || !parsed.hasScheme || parsed.host.isEmpty) {
+      return authBaseUrl;
+    }
+    return parsed.origin;
+  }
+
+  Map<String, String> _sessionHeaders(
+    String cookie, {
+    bool jsonBody = false,
+  }) {
+    return {
+      'accept': 'application/json',
+      'origin': _requestOrigin,
+      'referer': authBaseUrl,
+      'cookie': cookie,
+      if (jsonBody) 'content-type': 'application/json',
+    };
+  }
+
   /// Exchanges an active Better Auth session cookie for a billing API JWT.
   Future<BillingAuthTokens> mintFromSessionCookie(String sessionCookie) async {
     final cookie = sessionCookie.trim();
@@ -26,10 +48,7 @@ class BillingApiTokenMint {
     final uri = Uri.parse('$authBaseUrl/token');
     final response = await _http.get(
       uri,
-      headers: {
-        'accept': 'application/json',
-        'cookie': cookie,
-      },
+      headers: _sessionHeaders(cookie),
     );
 
     Map<String, dynamic> body;
@@ -72,6 +91,18 @@ class BillingApiTokenMint {
     return BillingAuthTokens.fromJwtPluginToken(token);
   }
 
+  /// Using-party mint: bind personal slug `me` when the session has no org.
+  Future<BillingAuthTokens> mintUsingPartyFromSessionCookie(
+    String sessionCookie,
+  ) async {
+    try {
+      return await mintFromSessionCookie(sessionCookie);
+    } on BillingOrgSlugRequiredException {
+      await bindFromSessionCookie(sessionCookie, slug: 'me');
+      return mintFromSessionCookie(sessionCookie);
+    }
+  }
+
   /// Binds the session to an organization slug (`POST /organization/bind`).
   Future<({String organizationId, String slug, String name, String role})>
       bindFromSessionCookie(String sessionCookie, {String slug = 'me'}) async {
@@ -84,11 +115,7 @@ class BillingApiTokenMint {
     final uri = Uri.parse('$authBaseUrl/organization/bind');
     final response = await _http.post(
       uri,
-      headers: {
-        'accept': 'application/json',
-        'content-type': 'application/json',
-        'cookie': cookie,
-      },
+      headers: _sessionHeaders(cookie, jsonBody: true),
       body: jsonEncode({'slug': trimmed}),
     );
 

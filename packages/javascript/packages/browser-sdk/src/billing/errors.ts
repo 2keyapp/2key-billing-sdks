@@ -16,11 +16,14 @@ export type ErrorCode =
 export class TwoKeyError extends Error {
   readonly code: ErrorCode;
   readonly detail?: string;
+  /** Structured payload (e.g. DEVICE_LIMIT_REACHED `devices`). */
+  readonly details?: unknown;
 
-  constructor(code: ErrorCode, message: string, detail?: string) {
+  constructor(code: ErrorCode, message: string, detail?: string, details?: unknown) {
     super(message);
     this.name = "TwoKeyError";
     this.code = code;
     this.detail = detail;
+    this.details = details;
   }
 }
