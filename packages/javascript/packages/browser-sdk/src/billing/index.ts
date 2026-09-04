@@ -50,6 +50,7 @@ export {
 export {
   BillingClient,
   createBillingClient,
+  DEFAULT_LICENSE_POLL_MS,
   type CreateBillingClientOptions,
 } from "./client.js";
 export {

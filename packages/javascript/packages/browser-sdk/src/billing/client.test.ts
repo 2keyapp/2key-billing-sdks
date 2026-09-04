@@ -89,6 +89,32 @@ test("createBillingClient restore + catalog gates", async () => {
   assert.equal(billing.hasProduct("unknown"), false);
 });
 
+test("restore keeps in-memory license when storage has no JWT", async () => {
+  const raw = JSON.parse(readFileSync(fixturePath, "utf8")) as {
+    claims: Record<string, unknown>;
+  };
+  const now = Math.floor(Date.now() / 1000);
+  const claims = { ...raw.claims, iat: now, exp: now + 3600 };
+  const { pem, jwt } = await generateEs256PemAndSign(claims);
+  const inner = memorySessionStore();
+  const store = {
+    get: async () => null,
+    set: (key: string, value: string) => inner.set(key, value),
+    delete: (key: string) => inner.delete(key),
+  };
+  const billing = createBillingClient(
+    {
+      apiBaseUrl: "https://billing.example.com",
+      publicKeyPem: pem,
+      storagePrefix: "office-mem-restore",
+    },
+    { store },
+  );
+  await billing.pasteLicense(jwt);
+  const restored = await billing.restore();
+  assert.equal(restored?.payingParty.id, "pp_test_1");
+});
+
 test("syncLicense binds device then fetches license", async () => {
   const raw = JSON.parse(readFileSync(fixturePath, "utf8")) as {
     claims: Record<string, unknown>;
@@ -127,12 +153,16 @@ test("syncLicense binds device then fetches license", async () => {
   assert.ok(device.ski);
 });
 
-test("bindLicenseDevice maps HTTP 409 to conflict", async () => {
+test("bindLicenseDevice maps HTTP 409 to conflict with device details", async () => {
   const fetchImpl: typeof fetch = async () =>
     jsonResponse(409, {
       success: false,
       error: "Device limit reached",
       code: "DEVICE_LIMIT_REACHED",
+      details: {
+        maxDevices: 5,
+        devices: [{ ski: "ski-old", friendlyName: "laptop" }],
+      },
     });
   const billing = createBillingClient(
     {
@@ -148,6 +178,10 @@ test("bindLicenseDevice maps HTTP 409 to conflict", async () => {
         accessToken: "tok",
         publicJwk: { kty: "OKP", crv: "Ed25519", x: "aa" },
       }),
-    (e: unknown) => e instanceof TwoKeyError && e.code === "conflict",
+    (e: unknown) => {
+      if (!(e instanceof TwoKeyError) || e.code !== "conflict") return false;
+      const details = e.details as { maxDevices?: number; devices?: { ski: string }[] };
+      return details?.maxDevices === 5 && details.devices?.[0]?.ski === "ski-old";
+    },
   );
 });

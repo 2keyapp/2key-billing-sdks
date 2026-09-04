@@ -42,6 +42,7 @@ export {
   BillingApiClient,
   createBillingClient,
   BillingClient,
+  DEFAULT_LICENSE_POLL_MS,
   normalizeApiBaseUrl,
   validateConfig,
   TwoKeyError,

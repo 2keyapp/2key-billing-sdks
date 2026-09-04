@@ -312,16 +312,22 @@ function asRecord(v: unknown): Record<string, unknown> {
 
 function throwHttp(res: Response, body: unknown, operation: string): never {
   const rec = asRecord(body);
+  const errObj = asRecord(rec.error);
   const message =
     (typeof rec.error === "string" && rec.error) ||
     (typeof rec.message === "string" && rec.message) ||
+    (typeof errObj.message === "string" && errObj.message) ||
     `${operation} failed (HTTP ${res.status}).`;
-  const code = typeof rec.code === "string" ? rec.code : undefined;
+  const code =
+    (typeof rec.code === "string" && rec.code) ||
+    (typeof errObj.code === "string" && errObj.code) ||
+    undefined;
+  const details = rec.details ?? errObj.details;
   if (res.status === 409) {
-    throw new TwoKeyError("conflict", message, code ?? "DEVICE_LIMIT_REACHED");
+    throw new TwoKeyError("conflict", message, code ?? "DEVICE_LIMIT_REACHED", details);
   }
   if (res.status === 401 || res.status === 403) {
     throw new TwoKeyError("unauthorized", message);
   }
-  throw new TwoKeyError("unknown", message, code);
+  throw new TwoKeyError("unknown", message, code, details);
 }

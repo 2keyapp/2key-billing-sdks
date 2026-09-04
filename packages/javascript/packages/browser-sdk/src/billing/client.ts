@@ -21,7 +21,8 @@ import {
 import { verifyLicenseJwt } from "./verify.js";
 
 const DEFAULT_ACCOUNT = "default";
-const DEFAULT_POLL_MS = 6 * 60 * 60 * 1000;
+/** Default background license poll interval (6 hours). */
+export const DEFAULT_LICENSE_POLL_MS = 6 * 60 * 60 * 1000;
 
 export type CreateBillingClientOptions = {
   store?: SessionStore;
@@ -76,15 +77,15 @@ export class BillingClient {
     const key = accountKey?.trim() || this.accountKey;
     const stored = await this.session.load(key);
     if (!stored?.licenseJwt) {
-      this.payload = null;
-      return null;
+      // Keep a just-synced in-memory license when persist has not flushed yet
+      // (Outlook WebViews often no-op or delay localStorage).
+      return this.payload;
     }
     try {
       this.payload = await verifyLicenseJwt(stored.licenseJwt, this.config.publicKeyPem);
       return this.payload;
     } catch {
-      this.payload = null;
-      return null;
+      return this.payload;
     }
   }
 
@@ -182,17 +183,21 @@ export class BillingClient {
     accountKey?: string;
   }): void {
     this.stopPolling();
-    const interval = opts.intervalMs ?? DEFAULT_POLL_MS;
+    const interval = opts.intervalMs ?? DEFAULT_LICENSE_POLL_MS;
     this.pollTimer = setInterval(() => {
       void (async () => {
-        const token = await opts.accessToken();
-        if (!token.trim()) return;
-        await this.syncLicense({
-          accessToken: token,
-          accountKey: opts.accountKey,
-          useCachedEtag: true,
-          bindIfNeeded: false,
-        });
+        try {
+          const token = await opts.accessToken();
+          if (!token.trim()) return;
+          await this.syncLicense({
+            accessToken: token,
+            accountKey: opts.accountKey,
+            useCachedEtag: true,
+            bindIfNeeded: false,
+          });
+        } catch {
+          /* skip this tick — task pane may be signed out */
+        }
       })();
     }, interval);
   }

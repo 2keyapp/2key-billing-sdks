@@ -276,6 +276,10 @@ export type LicenseEntitlementsView = {
   /** productId → resourceKey → summed quantity */
   byProduct: Record<string, Record<string, number>>;
   maxDevices: number;
+  /** Active add-on codes (no prices). Parity with Dart `LicenseEntitlements.addons`. */
+  addonCodes: string[];
+  /** Active offering codes (no prices). Parity with Dart `LicenseEntitlements.offeringCodes`. */
+  offeringCodes: string[];
   hasAddon: (code: string) => boolean;
   hasOffering: (code: string) => boolean;
   hasProduct: (productId: string) => boolean;
@@ -406,6 +410,8 @@ export function licenseEntitlements(
   return {
     byProduct,
     maxDevices: resourceInt("max_devices"),
+    addonCodes: [...addons].sort(),
+    offeringCodes: [...offerings].sort(),
     hasAddon: (code) => {
       const needle = code.trim().toLowerCase();
       for (const a of addons) if (a.toLowerCase() === needle) return true;
