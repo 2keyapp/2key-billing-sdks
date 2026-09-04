@@ -15,7 +15,7 @@ final entitlements = session.accountSession?.licensePayload?.entitlements;
 
 if (online) {
   unawaited(session.syncIfLicenseChanged(accountKey: accountKey));
-  session.startLicensePolling(accountKey: accountKey);
+  session.startLicensePolling(accountKey: accountKey); // 6 hours
 }
 ```
 
