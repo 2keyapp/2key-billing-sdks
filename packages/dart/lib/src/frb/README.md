@@ -8,7 +8,7 @@ Dart product path to private **`two-key-core`**.
 | `frb_wire.dart` | C ABI loader (`two_key_*`) — interim until codegen |
 | `rust_billing_core.dart` | Sole license verify/sync/bootstrap adapter |
 
-## flutter_rust_bridge 2.11.1
+## flutter_rust_bridge 2.13.0
 
 - Pub dependency pinned in `packages/dart/pubspec.yaml`.
 - Codegen config lives in private `2key-core-sdk/flutter_rust_bridge.yaml` + `docs/FRB.md`.
