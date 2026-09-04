@@ -64,11 +64,12 @@ import {
 Typical browser flow:
 
 1. Better Auth cookie session via redirect (`socialSignInUrl` / host auth client).
-2. `acquireApiToken(config)` → billing JWT (`aud=billing`).
-3. `BillingApiClient.ensureBillingContext` / `fetchLicense` / `fetchPlans`.
-4. `verifyLicenseJwt` offline with the public PEM.
-5. Portal handoff from native: `portalHandoffUrl` + OTT from auth host.
-6. AuthZ: `authorize` / `enforceLocally` before privileged client actions (server always re-checks).
+2. **Using-party** (secMail, Outlook): `acquireUsingPartyApiToken(config)` — binds personal slug `me` if the session has no org, then mints. Show **all assigned seats** from `GET /api/v1/license` (identity-wide). Do not ask the user to create or pick an organization.
+3. **Paying-party** (billing portal): `acquireApiToken(config)` — on `orgPickRequired` / `ORG_SLUG_REQUIRED`, bind `me` or a company slug in the portal UI, then remint.
+4. `BillingApiClient.ensureBillingContext` / `fetchLicense` / `fetchPlans`.
+5. `verifyLicenseJwt` offline with the public PEM.
+6. Portal handoff from native: `portalHandoffUrl` + OTT from auth host. Hosts must pass `portalBaseUrl` (or open the configured portal URL) — never derive the portal from the billing API origin alone.
+7. AuthZ: `authorize` / `enforceLocally` before privileged client actions (server always re-checks).
 
 The SPA must **not** import `better-auth` server plugins or private core binaries.
 

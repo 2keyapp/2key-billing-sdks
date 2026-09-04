@@ -21,7 +21,7 @@
 |---------|----------|
 | Session | HTTP-only cookies; `credentials: 'include'` on auth + API same-origin (or CORS + trusted origins) |
 | Sign-in | Email/password (`signInWithEmail`) or full-page/popup **redirect** to IdP; return to app origin |
-| Token | Session cookie and/or `GET /api/auth/token` (`acquireApiToken`) for API JWT |
+| Token | Session cookie and/or `GET /api/auth/token`. Using-party: `acquireUsingPartyApiToken` / Dart `acquireApiToken` auto-binds `me`. Paying-party portal binds a slug first. |
 | Device | `createBillingClient().ensureDeviceId()` then `POST /api/v1/license/devices` |
 | Storage | Cookie jar + `localStorage` / IndexedDB for license JWT + ETag + device key (no Keychain) |
 | mTLS | Not supported |
