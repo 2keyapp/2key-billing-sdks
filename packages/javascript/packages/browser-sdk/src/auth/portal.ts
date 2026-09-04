@@ -50,6 +50,24 @@ export function socialSignInUrl(
   return u.toString();
 }
 
+/**
+ * Billing-hosted Office dialog start URL (same-origin POST so OAuth state cookies stick).
+ * `returnUrl` must be the add-in `auth-callback.html` on a trusted origin.
+ */
+export function officeSocialStartUrl(
+  config: SdkConfig,
+  opts: { provider: string; returnUrl: string; waitId?: string },
+): string {
+  const c = validateConfig(config);
+  const u = new URL("oauth/office-start.html", originSlash(c.apiBaseUrl));
+  u.searchParams.set("provider", opts.provider);
+  u.searchParams.set("return", opts.returnUrl);
+  if (opts.waitId?.trim()) {
+    u.searchParams.set("wait", opts.waitId.trim());
+  }
+  return u.toString();
+}
+
 /** Auth base path on the billing origin. */
 export function authBaseUrl(config: SdkConfig): string {
   const c = validateConfig(config);

@@ -14,8 +14,12 @@
 // AuthN
 export {
   acquireApiToken,
+  acquireUsingPartyApiToken,
+  bindOrganization,
+  exchangeOneTimeToken,
   portalHandoffUrl,
   authBaseUrl,
+  officeSocialStartUrl,
   portalPathUrl,
   resolvedPortalBaseUrl,
   shopUrl,
@@ -23,7 +27,10 @@ export {
   signInWithEmail,
   signUpWithEmail,
   fetchOAuthProviders,
+  PERSONAL_ORG_SLUG,
   type AcquireApiTokenResult,
+  type AuthSessionOpts,
+  type BindOrganizationResult,
   type EmailAuthResult,
   type EmailAuthUser,
   type OAuthProviderInfo,
