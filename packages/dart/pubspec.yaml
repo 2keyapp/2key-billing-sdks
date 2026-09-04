@@ -15,6 +15,7 @@ dependencies:
   flutter_rust_bridge: 2.11.1
   http: ^1.2.0
   # Internal only — host apps must depend on two_key_dart_sdk, never better_auth.
+  # Bump `ref` to the 2keyapp/better-auth SHA that mints/echoes `ba_nonce`.
   better_auth:
     git:
       url: https://github.com/2keyapp/better-auth.git
