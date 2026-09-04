@@ -7,6 +7,7 @@ import 'package:two_key_dart_sdk/src/frb/rust_billing_core.dart';
 import 'package:two_key_dart_sdk/src/keys/default_public_key.dart';
 import 'package:two_key_dart_sdk/src/keys/public_key_loader.dart';
 import 'package:two_key_dart_sdk/src/keys/public_key_loader_asset.dart';
+import 'package:two_key_dart_sdk/src/license/dart_license_verify.dart';
 import 'package:two_key_dart_sdk/src/models/billing_stats.dart';
 import 'package:two_key_dart_sdk/src/models/billing_token_error.dart';
 import 'package:two_key_dart_sdk/src/models/billing_token_payload.dart';
@@ -14,8 +15,9 @@ import 'package:two_key_dart_sdk/src/models/license_entitlements.dart';
 
 /// Client SDK for **using-party apps**: auth token → license sync → offline entitlements.
 ///
-/// License verify/sync/bootstrap always use **`two-key-core`** via the FRB wire
-/// ([RustBillingCore]). Plan catalog remains Dart HTTP ([BillingApiClient]).
+/// License **offline verify** uses `two-key-core` when the native library is
+/// loaded, otherwise Dart ES256. Sync/bootstrap still require the native
+/// library. Plan catalog remains Dart HTTP ([BillingApiClient]).
 ///
 /// Use [BillingAuthClient] for login and [BillingSession] for persisted state.
 class BillingSdk {
@@ -286,10 +288,12 @@ class BillingSdk {
 
   static VerifyResult verifyAndDecode(String pastedJson) {
     final trimmed = pastedJson.trim();
-    final result = _core.verifyLicense(
-      publicKeyPem: _pemOrThrow,
-      jwt: trimmed,
-    );
+    final pem = _pemOrThrow;
+    final core = _rust ?? RustBillingCore.tryOpen();
+    _rust = core;
+    final result = core != null
+        ? core.verifyLicense(publicKeyPem: pem, jwt: trimmed)
+        : verifyLicenseJwtDart(jwt: trimmed, publicKeyPem: pem);
     if (result case VerifySuccess(:final payload)) {
       _currentPayload = payload;
     }
