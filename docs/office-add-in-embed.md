@@ -40,7 +40,7 @@ static catalog (build)  ∩  verified license JWT (runtime)  →  gates + quotas
 
 `GET /api/v1/plans` is shop/CTA only — never the source of what the app enforces.
 
-Do **not** use `@2key/catalog-scomm` for Outlook. That seed is Scomm Workflows (channels / FSM). Outlook/secMail codes are the SecMail product (`ai_assistant`, `scomm_connector`, `pgp`, `linux`, …) plus IDR if Local AI is billed.
+Do **not** use `@2key/catalog-scomm` for Outlook. That seed is Scomm Workflows (channels / FSM). Outlook/secMail codes are the SecMail product (`ai_assistant`, `scomm_connector`, `pgp`, `pqc`, …) plus IDR if Local AI is billed. Outlook must **not** list `linux`. See section 9 for `SCOMM_OFFICE_CATALOG`.
 
 ### Target host API (after parity)
 
@@ -153,12 +153,26 @@ Until this is named, `VITE_BILLING_ORIGIN` stays an env var.
 
 ### Same shop SKUs as secMail, or a new Outlook product?
 
-secMail already bills add-ons like `ai_assistant`, `pgp`, `scomm_connector`. Outlook needs to gate similar features.
+**Resolved (billing catalog split):** keep **one SecMail product** and **one identity-wide JWT**. Do not create a dedicated Office product. Hosts differ by **static catalog ID lists**.
 
-- **Same offerings:** one subscription unlocks secMail *and* Outlook. Gate codes match Flutter. Prefer this if Outlook is “secMail in Office.”
-- **Dedicated Office product:** Outlook is sold separately, new offering codes, users can have mail on one and Outlook on the other.
+- Same price + both surfaces → **one** `addon_code` (`pqc`, `ai_assistant`, `scomm_connector`).
+- Different price or applicability → **split** (`pgp` is Office classical only; Email classical is ungated; `linux` is Email/Linux only).
 
-This is a commercial choice. The SDK only needs the static catalog of whichever codes you pick.
+Gate with `catalog ∩ JWT`. `GET /api/v1/plans?surface=office` is shop/CTA only.
+
+```ts
+/** Codes this add-in knows how to gate. `productIds` must match JWT `offerings[].product_id` (SecMail `products.id` string), not the slug "secmail". */
+export const SCOMM_OFFICE_CATALOG = {
+  productIds: ["<secmail-products.id>"],
+  offeringCodes: ["pgp", "pqc", "ai_assistant", "scomm_connector"],
+  addonCodes: ["pgp", "pqc", "ai_assistant", "scomm_connector"],
+} as const;
+
+if (e.hasAddon("pgp") || e.hasOffering("pgp")) { /* Outlook OpenPGP ECC — classical */ }
+// hasAddon("pqc") is catalog-ready only; do not show a PQC buy CTA until a PQC engine ships.
+```
+
+Never list `linux` or `accent_color` in the Office catalog. SDK gate API is unchanged.
 
 ### What license check runs before IDR (local AI)?
 

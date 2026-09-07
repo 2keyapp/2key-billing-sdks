@@ -85,3 +85,56 @@ test("catalog intersection fails closed", () => {
   assert.equal(otherApp.hasOffering("scomm_connector_5"), false);
   assert.equal(otherApp.hasAddon("scomm_connector"), false);
 });
+
+test("Scomm host catalogs split pgp / pqc / linux on one JWT", () => {
+  const splitPath = join(
+    here,
+    "../../../../../../conformance/fixtures/license_payload_scomm_split.json",
+  );
+  const catalogsPath = join(
+    here,
+    "../../../../../../conformance/fixtures/scomm_host_catalogs.json",
+  );
+  const split = JSON.parse(readFileSync(splitPath, "utf8")) as {
+    claims: unknown;
+  };
+  const catalogs = JSON.parse(readFileSync(catalogsPath, "utf8")) as {
+    productIds: string[];
+    hosts: Record<string, { offeringCodes: string[]; addonCodes: string[] }>;
+  };
+  const payload = parseLicenseClaims(split.claims);
+  const productIds = catalogs.productIds;
+
+  function host(name: string) {
+    const row = catalogs.hosts[name];
+    if (!row) throw new Error(`unknown host catalog: ${name}`);
+    return {
+      productIds,
+      offeringCodes: row.offeringCodes,
+      addonCodes: row.addonCodes,
+    };
+  }
+
+  const open = licenseEntitlements(payload, 1_700_000_000);
+  assert.equal(open.hasAddon("linux"), true);
+  assert.equal(open.hasAddon("pgp"), true);
+  assert.equal(open.hasAddon("pqc"), true);
+
+  const email = licenseEntitlements(payload, 1_700_000_000, host("secmailDesktop"));
+  assert.equal(email.hasAddon("pqc"), true);
+  assert.equal(email.hasAddon("ai_assistant"), true);
+  assert.equal(email.hasAddon("pgp"), false);
+  assert.equal(email.hasAddon("linux"), false);
+
+  const emailLinux = licenseEntitlements(payload, 1_700_000_000, host("secmailLinux"));
+  assert.equal(emailLinux.hasAddon("linux"), true);
+  assert.equal(emailLinux.hasAddon("pqc"), true);
+  assert.equal(emailLinux.hasAddon("pgp"), false);
+
+  const office = licenseEntitlements(payload, 1_700_000_000, host("office"));
+  assert.equal(office.hasAddon("pgp"), true);
+  assert.equal(office.hasAddon("pqc"), true);
+  assert.equal(office.hasAddon("ai_assistant"), true);
+  assert.equal(office.hasAddon("linux"), false);
+  assert.equal(office.hasAddon("accent_color"), false);
+});
