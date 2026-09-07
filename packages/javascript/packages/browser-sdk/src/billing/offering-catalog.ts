@@ -3,6 +3,9 @@
  *
  * Runtime gates are `static catalog ∩ verified license JWT`.
  * Unknown JWT codes are ignored; catalog codes missing from the JWT fail closed.
+ *
+ * Codes are tenant strings (not an enum). Scomm Email / Office membership is
+ * documented in `conformance/fixtures/scomm_host_catalogs.json`.
  */
 export type OfferingCatalog = {
   productIds: readonly string[];

@@ -3,6 +3,9 @@
 /// At runtime, [LicenseEntitlements] intersects this set with the verified license
 /// JWT. Unknown JWT codes are ignored; catalog codes missing from the JWT fail closed.
 /// Omit the catalog to keep JWT-only gating.
+///
+/// Codes are tenant strings (not an enum). Scomm Email / Office membership is
+/// documented in `conformance/fixtures/scomm_host_catalogs.json`.
 class OfferingCatalog {
   const OfferingCatalog({
     required this.productIds,

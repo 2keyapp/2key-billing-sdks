@@ -1,0 +1,115 @@
+{
+  "claims": {
+    "payload_version": 3,
+    "iss": "https://billing.example.com",
+    "aud": "billing-license",
+    "iat": 1700000000,
+    "nbf": 1700000000,
+    "exp": 4102444800,
+    "paying_party": {
+      "id": "pp_test_1",
+      "identity_provider": "google",
+      "identity_subject": "sub-123",
+      "billing_email": "billing@example.com"
+    },
+    "subscriptions": [
+      {
+        "subscription_id": "sub_linux",
+        "plan_id": "10",
+        "plan_name": "Linux Version",
+        "product_id": "prod_mail",
+        "quantity": 1,
+        "subscription_status": "active",
+        "valid_from": 1700000000,
+        "valid_until": 4102444800,
+        "billing_interval": "annual",
+        "addon_code": "linux",
+        "offerings": [
+          {
+            "offering_id": "off_linux",
+            "offering_code": "linux",
+            "product_id": "prod_mail",
+            "units": 1,
+            "resources": { "addon_code": "linux" }
+          }
+        ]
+      },
+      {
+        "subscription_id": "sub_pgp",
+        "plan_id": "11",
+        "plan_name": "Outlook OpenPGP ECC",
+        "product_id": "prod_mail",
+        "quantity": 1,
+        "subscription_status": "active",
+        "valid_from": 1700000000,
+        "valid_until": 4102444800,
+        "billing_interval": "annual",
+        "addon_code": "pgp",
+        "offerings": [
+          {
+            "offering_id": "off_pgp",
+            "offering_code": "pgp",
+            "product_id": "prod_mail",
+            "units": 1,
+            "resources": { "addon_code": "pgp" }
+          }
+        ]
+      },
+      {
+        "subscription_id": "sub_pqc",
+        "plan_id": "12",
+        "plan_name": "Outlook OpenPGP ECC+PQC",
+        "product_id": "prod_mail",
+        "quantity": 1,
+        "subscription_status": "active",
+        "valid_from": 1700000000,
+        "valid_until": 4102444800,
+        "billing_interval": "annual",
+        "addon_code": "pqc",
+        "offerings": [
+          {
+            "offering_id": "off_pqc",
+            "offering_code": "pqc",
+            "product_id": "prod_mail",
+            "units": 1,
+            "resources": { "addon_code": "pqc" }
+          }
+        ]
+      },
+      {
+        "subscription_id": "sub_ai",
+        "plan_id": "13",
+        "plan_name": "Local-AI",
+        "product_id": "prod_mail",
+        "quantity": 1,
+        "subscription_status": "active",
+        "valid_from": 1700000000,
+        "valid_until": 4102444800,
+        "billing_interval": "annual",
+        "addon_code": "ai_assistant",
+        "offerings": [
+          {
+            "offering_id": "off_ai",
+            "offering_code": "ai_assistant",
+            "product_id": "prod_mail",
+            "units": 1,
+            "resources": { "addon_code": "ai_assistant" }
+          }
+        ]
+      }
+    ],
+    "entitlements": {
+      "by_product": {
+        "prod_mail": { "max_devices": 5 }
+      },
+      "max_devices": 5,
+      "addons": ["linux", "pgp", "pqc", "ai_assistant"],
+      "by_offering_code": {
+        "linux": { "addon_code": "linux" },
+        "pgp": { "addon_code": "pgp" },
+        "pqc": { "addon_code": "pqc" },
+        "ai_assistant": { "addon_code": "ai_assistant" }
+      }
+    }
+  }
+}
