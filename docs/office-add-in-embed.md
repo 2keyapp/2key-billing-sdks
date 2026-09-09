@@ -12,7 +12,7 @@
 | Capability | What the host calls the SDK to do | Dart today | JS today |
 |------------|-----------------------------------|------------|----------|
 | **Generate DeviceID** | Create and persist a local license-device identity (Ed25519, SKI) | `LicenseDeviceKeystore.ensureForAccount` | `createBillingClient().ensureDeviceId()` / `LicenseDeviceKeystore` |
-| **Populate signed license key** | Restore / sync / verify the ES256 license JWT and cache it | `BillingSession` + `GET /api/v1/license` (ETag) + bind device | `restore()` / `syncLicense()` / `pasteLicense()` |
+| **Populate signed license** | Restore / paste / verify the signed JSON snapshot (compact JWS transport) | `BillingSession` + paste; default `BillingMode.offline` | `restore()` / `pasteLicense()` / `exportDevicePaste()` |
 | **Answer product gates** | `hasProduct` / `hasOffering` / `hasAddon` / resource quotas | `LicenseEntitlements` (+ optional `OfferingCatalog`) | `licenseEntitlements(..., catalog)` / `billing.entitlements()` |
 
 Outlook (and every other JS app) must go through `@2key/browser-sdk` for those three. The add-in must not parse JWTs or invent entitlement math.
@@ -35,7 +35,7 @@ Same OpenAPI, same conformance fixtures, same gate names. Different language wra
 At **configure**, the host passes the products and offerings **this binary knows how to gate**. At **runtime**, the signed license says which of those the user has.
 
 ```
-static catalog (build)  ∩  verified license JWT (runtime)  →  gates + quotas
+static catalog (build)  ∩  verified signed snapshot (runtime)  →  gates + quotas
 ```
 
 `GET /api/v1/plans` is shop/CTA only — never the source of what the app enforces.
@@ -52,9 +52,9 @@ const billing = createBillingClient({
   catalog: SCOMM_OFFICE_CATALOG,
 });
 
-const device = await billing.ensureDeviceId(); // persist SKI / JWK
-await billing.restore();                       // verify cached signed license
-await billing.syncLicense();                   // GET /license, bind device if needed
+const deviceJson = await billing.exportDevicePaste({ friendlyName: "Outlook" });
+await billing.restore();                       // verify cached signed snapshot
+await billing.pasteLicense(snapshotFromPortal);
 const e = billing.entitlements();
 
 if (!e.hasProduct("secmail")) { /* locked */ }
@@ -67,10 +67,10 @@ Unknown JWT offerings are ignored. Catalog offerings missing from the JWT fail c
 
 Match Dart. Do not invent a Dart-shaped facade (`BillingSdk` statics); use the same **behaviors and claim names**.
 
-1. **DeviceID** — `ensureDeviceId` / keystore (IndexedDB or host store) + `POST /api/v1/license/devices` (bind, `issueLicense`, `replaceSki`, device limit). Parity with `LicenseDeviceKeystore` + `bindLicenseDevice`. Reuse Ed25519 helpers already in `@2key/dp-ts`.
-2. **Signed license** — session orchestrator: restore, ES256 verify, ETag sync, paste-token, optional poll. Lift Office’s local `BillingSession` behaviors under SDK names.
+1. **DeviceID** — `ensureDeviceId` / `exportDevicePaste()` (`friendlyName` + `publicJwk` only). Portal bind is `POST /api/v1/license/devices` (portal only). Parity with `LicenseDeviceKeystore`.
+2. **Signed snapshot** — restore, ES256 verify without JWT `exp`, paste-token. `syncLicense` / poll stay compiled but do not call GET by default.
 3. **Gates** — `configure({ catalog })` so `hasProduct` / `hasOffering` / `hasAddon` / `resourceForProduct` are fail-closed against the static list. Conformance: `license_payload_v3.json`.
-4. **AuthN** — email/password, provider discovery, `acquireUsingPartyApiToken` (auto-bind `me`). No Better Auth types exported. Outlook WebViews cannot rely on third-party cookies.
+4. **AuthN** — Better Auth stays on billing + portal. Outlook must **not** use it to fetch a license. Outlook WebViews cannot rely on third-party cookies.
 
 Defer: DP `authorize()`, machine mTLS, embedding Rust AuthZ.
 
@@ -98,13 +98,14 @@ IDR stays `@idrto/idr_browser_sdk`. Billing only gates it.
 
 ```
 1. configure (origin, PEM, storagePrefix, static catalog)
-2. ensureDeviceId
-3. restore cached signed license → paint gates immediately
-4. sign-in if needed (email or Office dialog)
-5. acquireUsingPartyApiToken → bind device if unbound → GET /api/v1/license
-6. verifyLicenseJwt → entitlements vs catalog
-7. locked features → Settings billing portal URL (prices stay on the portal)
+2. ensureDeviceId + exportDevicePaste (friendlyName + publicJwk)
+3. restore cached signed snapshot → paint gates immediately
+4. If unbound: user pastes JSON in portal Settings → Devices, copies signed snapshot back
+5. pasteLicense → entitlements vs catalog
+6. locked features → Settings billing portal URL (prices stay on the portal)
 ```
+
+Do **not** call `GET /api/v1/license` or in-add-in Better Auth for licensing. X.509 is not the license format.
 
 ## 7. Work order
 

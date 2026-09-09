@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:two_key_dart_sdk/billing_dart_sdk.dart';
 
@@ -50,6 +52,21 @@ void main() {
     final loaded = await store.loadForAccount('acct');
     expect(loaded?.friendlyName, 'laptop');
     expect(loaded?.ski, created.ski);
+  });
+
+  test('LicenseDeviceIdentity.exportPasteJson omits privateJwk', () async {
+    final mem = <String, String>{};
+    final store = LicenseDeviceKeystore(
+      read: (k) async => mem[k],
+      write: (k, v) async => mem[k] = v,
+    );
+    final created = await store.ensureForAccount('acct');
+    expect(() => created.exportPasteJson(), throwsArgumentError);
+    final named = created.copyWith(friendlyName: 'laptop');
+    final parsed = jsonDecode(named.exportPasteJson()) as Map<String, dynamic>;
+    expect(parsed['friendlyName'], 'laptop');
+    expect(parsed['publicJwk'], named.publicJwk);
+    expect(parsed.containsKey('privateJwk'), isFalse);
   });
 
   test('LicenseDeviceClaim parses friendly_name', () {

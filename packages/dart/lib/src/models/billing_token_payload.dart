@@ -116,7 +116,12 @@ class BillingTokenPayload {
   /// Whether the payload has an active subscription for the given add-on code.
   bool hasAddon(String addonCode) => entitlements.hasAddon(addonCode);
 
-  /// Whether the token is still valid (not expired).
+  /// Whether any included subscription `valid_until` is in the past.
+  /// Remaining current seats on the same snapshot must not be used.
+  bool get hasExpiredIncludedSubscription =>
+      subscriptions.any((s) => s.isPeriodEnded);
+
+  /// JWT `exp` if present. License validity is [hasExpiredIncludedSubscription].
   bool get isExpired => DateTime.now().isAfter(expiresAt);
 
   @override

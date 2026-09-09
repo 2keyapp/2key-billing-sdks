@@ -6,12 +6,12 @@
 
 ```
 1. Configure SDK (api origin + license public PEM + storage prefix)
-2. Sign-in (platform-specific)
-3. Mint / acquire billing API access token from auth session
-4. Persist account session (tokens + profile)
-5. GET /api/v1/license (Bearer) → ES256 license JWT (+ ETag)
-6. Offline verify license; read entitlements
-7. Optional: GET /api/v1/subscriptions/me, GET /api/v1/plans
+2. Using-party: generate DeviceID, copy public JSON, bind+issue in the portal, paste snapshot
+3. Paying-party: sign-in (platform-specific), mint billing API JWT for portal/shop
+4. Persist account session (tokens + profile) where needed for portal
+5. Do not GET /api/v1/license from using-party clients (410 by default)
+6. Offline verify signed snapshot; read entitlements (no JWT exp; any past valid_until rejects)
+7. Optional: GET /api/v1/plans for shop CTAs
 8. Portal handoff (paying-party) via one-time token URL when allowed
 ```
 
@@ -22,8 +22,9 @@
 | Session | HTTP-only cookies; `credentials: 'include'` on auth + API same-origin (or CORS + trusted origins) |
 | Sign-in | Email/password (`signInWithEmail`) or full-page/popup **redirect** to IdP; return to app origin |
 | Token | Session cookie and/or `GET /api/auth/token`. Using-party: `acquireUsingPartyApiToken` / Dart `acquireApiToken` auto-binds `me`. Paying-party portal binds a slug first. |
-| Device | `createBillingClient().ensureDeviceId()` then `POST /api/v1/license/devices` |
-| Storage | Cookie jar + `localStorage` / IndexedDB for license JWT + ETag + device key (no Keychain) |
+| Device | `createBillingClient().ensureDeviceId()` then `exportDevicePaste()` for portal bind |
+| Storage | Cookie jar (portal) + `localStorage` / IndexedDB for license snapshot + device key (no Keychain) |
+| License | Offline: ES256 verify of signed JSON snapshot. No in-app GET `/api/v1/license`. |
 | mTLS | Not supported |
 
 Server must allow the SPA origin in Better Auth trusted origins / CORS.
@@ -37,9 +38,9 @@ Server must allow the SPA origin in Better Auth trusted origins / CORS.
 | Token | Auth client mints billing API JWT; feed into `2key_core` session |
 | Storage | Secure storage port (Keychain / Keystore / DPAPI / Flutter secure storage) namespaced by `storage_prefix` |
 | CLI | Device code / loopback / pasted token; OS keyring |
-| License | Offline: ES256 verify via `two-key-core` (FRB). Online: ensure device key → `POST /api/v1/license/devices` → `ensure_billing_context` + `sync_license` (ETag). Canonical bind UI: SPA `{portal}/settings/devices`. No-JS fallback: billing `GET /portal/devices`. |
-| Device bind | Per-seat `maxDevices` from plan `features_json`; SComm Connect = 5. At limit require `replaceSki`. License JWT includes `devices[].ski` + `max_devices` |
-| BillingMode | Dart `BillingSession.mode`: `offline` blocks license HTTP; `online` allows sync/poll |
+| License | Offline: ES256 verify of a portal-issued signed snapshot (no JWT `exp`). Online GET sync is disabled. Canonical bind UI: SPA `{portal}/settings/devices`. |
+| Device bind | Per-seat `maxDevices` from plan `features_json`; SComm Connect = 5. At limit require `replaceSki`. Snapshot includes `devices[].ski` + `max_devices` |
+| BillingMode | Dart `BillingSession.mode` defaults to `offline` (blocks license HTTP). `online` stays compiled. |
 
 OAuth / PKCE / loopback stay in the host + auth adapter — **not** in `two-key-core`.
 

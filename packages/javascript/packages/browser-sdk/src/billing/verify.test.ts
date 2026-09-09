@@ -59,10 +59,31 @@ test("verifyLicenseJwt accepts valid ES256 token", async () => {
     claims: Record<string, unknown>;
   };
   const now = Math.floor(Date.now() / 1000);
-  const claims = { ...raw.claims, iat: now, exp: now + 3600 };
+  const { exp: _omitExp, ...rest } = raw.claims;
+  const claims = { ...rest, iat: now };
   const { pem, jwt } = await generateEs256PemAndSign(claims);
   const payload = await verifyLicenseJwt(jwt, pem, now);
   assert.equal(payload.payingParty.id, "pp_test_1");
+});
+
+test("verifyLicenseJwt rejects when any included subscription has expired", async () => {
+  const raw = JSON.parse(readFileSync(fixturePath, "utf8")) as {
+    claims: Record<string, unknown>;
+  };
+  const now = Math.floor(Date.now() / 1000);
+  const { exp: _omitExp, ...rest } = raw.claims;
+  const subscriptions = (rest.subscriptions as Record<string, unknown>[]).map(
+    (s, i) =>
+      i === 0
+        ? { ...s, valid_until: now - 60 }
+        : s,
+  );
+  const claims = { ...rest, iat: now, subscriptions };
+  const { pem, jwt } = await generateEs256PemAndSign(claims);
+  await assert.rejects(
+    () => verifyLicenseJwt(jwt, pem, now),
+    (e: unknown) => e instanceof TwoKeyError && e.code === "license_expired",
+  );
 });
 
 test("verifyLicenseJwt rejects wrong key", async () => {
@@ -70,7 +91,8 @@ test("verifyLicenseJwt rejects wrong key", async () => {
     claims: Record<string, unknown>;
   };
   const now = Math.floor(Date.now() / 1000);
-  const claims = { ...raw.claims, iat: now, exp: now + 3600 };
+  const { exp: _omitExp, ...rest } = raw.claims;
+  const claims = { ...rest, iat: now };
   const { jwt } = await generateEs256PemAndSign(claims);
   const other = await generateEs256PemAndSign(claims);
   await assert.rejects(

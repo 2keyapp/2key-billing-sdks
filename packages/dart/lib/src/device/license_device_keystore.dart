@@ -43,6 +43,20 @@ class LicenseDeviceIdentity {
         if (friendlyName != null) 'friendlyName': friendlyName,
       };
 
+  /// JSON for portal Settings → Devices (`friendlyName` + `publicJwk` only).
+  String exportPasteJson() {
+    final name = friendlyName?.trim();
+    if (name == null || name.isEmpty) {
+      throw ArgumentError(
+        'Set a device friendlyName before copying JSON for the portal.',
+      );
+    }
+    return jsonEncode({
+      'friendlyName': name,
+      'publicJwk': publicJwk,
+    });
+  }
+
   factory LicenseDeviceIdentity.fromJson(Map<String, dynamic> json) {
     final friendly = json['friendlyName'] ?? json['friendly_name'];
     return LicenseDeviceIdentity(

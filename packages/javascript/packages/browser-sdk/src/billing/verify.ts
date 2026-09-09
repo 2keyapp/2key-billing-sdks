@@ -119,10 +119,10 @@ export async function verifyLicenseJwt(
   }
 
   const payload = parseLicenseClaims(claims);
-  if (nowUnixSeconds > payload.expiresAtUnix) {
+  if (payload.subscriptions.some((s) => s.validUntilUnix <= nowUnixSeconds)) {
     throw new TwoKeyError(
       "license_expired",
-      "This token has expired. Please sync or get a new token from the billing portal.",
+      "A subscription on this license has expired. Get a new license from the billing portal.",
     );
   }
   return payload;

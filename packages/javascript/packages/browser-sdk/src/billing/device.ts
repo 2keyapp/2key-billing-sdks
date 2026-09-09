@@ -75,8 +75,16 @@ export function withFriendlyName(
   return { ...identity, friendlyName: name };
 }
 
-export function assertDeviceIdentity(identity: LicenseDeviceIdentity): void {
-  if (!identity.ski?.trim() || !identity.publicJwk) {
-    throw new TwoKeyError("config", "License device identity is incomplete.");
+export function exportDevicePaste(identity: LicenseDeviceIdentity): string {
+  const friendlyName = identity.friendlyName?.trim();
+  if (!friendlyName) {
+    throw new TwoKeyError(
+      "config",
+      "Set a device friendlyName before copying JSON for the portal.",
+    );
   }
+  return JSON.stringify({
+    friendlyName,
+    publicJwk: identity.publicJwk,
+  });
 }

@@ -45,12 +45,15 @@ export {
 } from "./offering-catalog.js";
 export {
   LicenseDeviceKeystore,
+  withFriendlyName,
+  exportDevicePaste,
   type LicenseDeviceIdentity,
 } from "./device.js";
 export {
   BillingClient,
   createBillingClient,
   DEFAULT_LICENSE_POLL_MS,
+  ONLINE_LICENSE_SYNC_ENABLED,
   type CreateBillingClientOptions,
 } from "./client.js";
 export {

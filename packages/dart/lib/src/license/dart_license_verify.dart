@@ -28,6 +28,7 @@ VerifyResult verifyLicenseJwtDart({
       trimmed,
       ECPublicKey(publicKeyPem),
       checkHeaderType: false,
+      checkExpiresIn: false,
     );
   } on JWTExpiredException {
     return const VerifyFailure(
@@ -114,11 +115,11 @@ VerifyResult verifyLicenseJwtDart({
 
   try {
     final payload = BillingTokenPayload.fromJson(Map<String, dynamic>.from(raw));
-    if (payload.isExpired) {
+    if (payload.hasExpiredIncludedSubscription) {
       return const VerifyFailure(
         BillingTokenError(
           message:
-              'This token has expired. Please sync or get a new token from the billing portal.',
+              'A subscription on this license has expired. Get a new license from the billing portal.',
           reason: BillingTokenErrorReason.expired,
         ),
       );
