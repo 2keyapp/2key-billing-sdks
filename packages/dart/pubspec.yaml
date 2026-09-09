@@ -12,13 +12,14 @@ dependencies:
   crypto: ^3.0.6
   cryptography: ^2.7.0
   ffi: ^2.1.3
-  flutter_rust_bridge: 2.11.1
+  flutter_rust_bridge: 2.13.0
   http: ^1.2.0
   # Internal only — host apps must depend on two_key_dart_sdk, never better_auth.
+  # 1ca42c4e9: Dart client mints/requires ba_nonce on ?cookie= redirects.
   better_auth:
     git:
       url: https://github.com/2keyapp/better-auth.git
-      ref: 9c90915c3ce257e6915d3a9bc3400e5cc163e9ac
+      ref: 1ca42c4e9894c500fa0fdc5c86a249765775099e
       path: packages/clients/dart
   flutter_secure_storage: ^9.2.4
   dart_jsonwebtoken: ^3.2.0

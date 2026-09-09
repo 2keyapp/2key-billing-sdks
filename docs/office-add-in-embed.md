@@ -70,7 +70,7 @@ Match Dart. Do not invent a Dart-shaped facade (`BillingSdk` statics); use the s
 1. **DeviceID** — `ensureDeviceId` / `exportDevicePaste()` (`friendlyName` + `publicJwk` only). Portal bind is `POST /api/v1/license/devices` (portal only). Parity with `LicenseDeviceKeystore`.
 2. **Signed snapshot** — restore, ES256 verify without JWT `exp`, paste-token. `syncLicense` / poll stay compiled but do not call GET by default.
 3. **Gates** — `configure({ catalog })` so `hasProduct` / `hasOffering` / `hasAddon` / `resourceForProduct` are fail-closed against the static list. Conformance: `license_payload_v3.json`.
-4. **AuthN** — Better Auth stays on billing + portal. Outlook must **not** use it to fetch a license.
+4. **AuthN** — Better Auth stays on billing + portal. Outlook must **not** use it to fetch a license. Outlook WebViews cannot rely on third-party cookies.
 
 Defer: DP `authorize()`, machine mTLS, embedding Rust AuthZ.
 
