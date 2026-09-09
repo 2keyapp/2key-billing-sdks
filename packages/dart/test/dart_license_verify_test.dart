@@ -1,6 +1,7 @@
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:two_key_dart_sdk/src/keys/default_public_key.dart';
+import 'package:two_key_dart_sdk/src/license/dart_license_verify.dart';
 import 'package:two_key_dart_sdk/two_key_dart_sdk.dart';
 
 // Matches lib/src/keys/default_public_key.dart (ES256)
@@ -11,35 +12,37 @@ MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgK/simzQCmAKvxHnO
 DcI/h/+lbVcG6QaSXALyCF6lcToJ8+hbIYYbxzle8zsSlDJmrlVpZ5qd
 -----END PRIVATE KEY-----''';
 
-String _token({Duration? expiresIn}) {
+String _token({int? validUntilUnix, bool includeExp = false}) {
   final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-  final exp = now + (expiresIn ?? const Duration(hours: 1)).inSeconds;
-  final validUntil = now + const Duration(days: 30).inSeconds;
-  return JWT(
-    {
-      'payload_version': 1,
-      'iss': 'https://billing.example.com',
-      'aud': 'billing',
-      'iat': now,
-      'exp': exp,
-      'paying_party': {
-        'id': 'party_456',
-        'sso_id': 'sso_abc',
-        'billing_email': 'billing@example.com',
-        'organization_name': 'Acme Inc',
-      },
-      'subscriptions': [
-        {
-          'subscription_id': 'sub_canon_1',
-          'plan_id': 'plan_premium',
-          'product_id': 'prod_1',
-          'plan_name': 'Premium',
-          'product_name': 'Product One',
-          'subscription_status': 'active',
-          'valid_until': validUntil,
-        },
-      ],
+  final validUntil = validUntilUnix ?? now + const Duration(days: 30).inSeconds;
+  final claims = <String, dynamic>{
+    'payload_version': 1,
+    'iss': 'https://billing.example.com',
+    'aud': 'billing',
+    'iat': now,
+    'paying_party': {
+      'id': 'party_456',
+      'sso_id': 'sso_abc',
+      'billing_email': 'billing@example.com',
+      'organization_name': 'Acme Inc',
     },
+    'subscriptions': [
+      {
+        'subscription_id': 'sub_canon_1',
+        'plan_id': 'plan_premium',
+        'product_id': 'prod_1',
+        'plan_name': 'Premium',
+        'product_name': 'Product One',
+        'subscription_status': 'active',
+        'valid_until': validUntil,
+      },
+    ],
+  };
+  if (includeExp) {
+    claims['exp'] = now + const Duration(hours: 1).inSeconds;
+  }
+  return JWT(
+    claims,
   ).sign(ECPrivateKey(_ecPrivKeyPem), algorithm: JWTAlgorithm.ES256);
 }
 
@@ -86,6 +89,27 @@ GahkXZM4YU68XGhQmfCLONC58SfzB9gINYdQRtxcg0LHVfTUcdp/Wqt9rw==
     expect(
       (result as VerifyFailure).error.reason,
       BillingTokenErrorReason.invalidSignature,
+    );
+  });
+
+  test('Dart path accepts a snapshot with no JWT exp', () {
+    final result = verifyLicenseJwtDart(
+      jwt: _token(),
+      publicKeyPem: defaultPublicKeyPem,
+    );
+    expect(result, isA<VerifySuccess>());
+  });
+
+  test('Dart path rejects when any included subscription has expired', () {
+    final past = DateTime.now().millisecondsSinceEpoch ~/ 1000 - 60;
+    final result = verifyLicenseJwtDart(
+      jwt: _token(validUntilUnix: past),
+      publicKeyPem: defaultPublicKeyPem,
+    );
+    expect(result, isA<VerifyFailure>());
+    expect(
+      (result as VerifyFailure).error.reason,
+      BillingTokenErrorReason.expired,
     );
   });
 }

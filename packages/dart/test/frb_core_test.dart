@@ -33,6 +33,17 @@ void main() {
     RustBillingCore.resetForTesting();
   });
 
+  test('BillingMode default is offline and blocks sync', () async {
+    final session = BillingSession(store: InMemoryBillingSessionStore());
+    expect(session.mode, BillingMode.offline);
+    final outcome = await session.syncOnlineForAccount(accountKey: 'u1');
+    expect(outcome, isA<SessionSyncFailure>());
+    expect(
+      (outcome as SessionSyncFailure).message,
+      contains('offline mode'),
+    );
+  });
+
   test('BillingMode offline blocks sync', () async {
     final session = BillingSession(
       store: InMemoryBillingSessionStore(),

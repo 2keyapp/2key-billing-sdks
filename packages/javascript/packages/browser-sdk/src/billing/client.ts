@@ -3,6 +3,7 @@ import { validateConfig, type SdkConfig } from "./config.js";
 import {
   LicenseDeviceKeystore,
   withFriendlyName,
+  exportDevicePaste,
   type LicenseDeviceIdentity,
 } from "./device.js";
 import { TwoKeyError } from "./errors.js";
@@ -23,6 +24,10 @@ import { verifyLicenseJwt } from "./verify.js";
 const DEFAULT_ACCOUNT = "default";
 /** Default background license poll interval (6 hours). */
 export const DEFAULT_LICENSE_POLL_MS = 6 * 60 * 60 * 1000;
+/**
+ * Keep GET `/api/v1/license` compiled. Default off — hosts paste a portal snapshot.
+ */
+export const ONLINE_LICENSE_SYNC_ENABLED = false;
 
 export type CreateBillingClientOptions = {
   store?: SessionStore;
@@ -72,6 +77,17 @@ export class BillingClient {
     return identity;
   }
 
+  /**
+   * JSON for portal Settings → Devices (`friendlyName` + `publicJwk`, no private key).
+   */
+  async exportDevicePaste(opts?: {
+    accountKey?: string;
+    friendlyName?: string;
+  }): Promise<string> {
+    const identity = await this.ensureDeviceId(opts);
+    return exportDevicePaste(identity);
+  }
+
   /** Verify a cached license JWT and paint gates immediately. */
   async restore(accountKey?: string): Promise<LicensePayload | null> {
     const key = accountKey?.trim() || this.accountKey;
@@ -101,6 +117,7 @@ export class BillingClient {
 
   /**
    * Bind the local device when unbound, then GET `/api/v1/license` (ETag when cached).
+   * Disabled by default — kept compiled for `ONLINE_LICENSE_SYNC_ENABLED`.
    */
   async syncLicense(opts: {
     accessToken: string;
@@ -112,6 +129,12 @@ export class BillingClient {
     friendlyName?: string;
     platform?: "web" | "ios" | "android" | "desktop" | "unknown";
   }): Promise<LicensePayload> {
+    if (!ONLINE_LICENSE_SYNC_ENABLED) {
+      throw new TwoKeyError(
+        "offline",
+        "Online license sync is disabled. Copy your device JSON into the billing portal and paste the signed license.",
+      );
+    }
     const key = opts.accountKey?.trim() || this.accountKey;
     const stored = (await this.session.load(key)) ?? { accountKey: key };
     const device = await this.ensureDeviceId({
@@ -182,6 +205,9 @@ export class BillingClient {
     intervalMs?: number;
     accountKey?: string;
   }): void {
+    if (!ONLINE_LICENSE_SYNC_ENABLED) {
+      return;
+    }
     this.stopPolling();
     const interval = opts.intervalMs ?? DEFAULT_LICENSE_POLL_MS;
     this.pollTimer = setInterval(() => {

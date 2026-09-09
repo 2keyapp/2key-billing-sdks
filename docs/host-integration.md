@@ -26,18 +26,25 @@ Rules:
 - Do **not** set `TWOKEY_CORE_DEV_DIR` in production builds (dev-only).
 - Supply `AuthSessionLauncher` + secure storage adapters; keep OAuth UI in the app.
 - Prefer instance APIs; static `BillingSdk` remains for compatibility.
-- Use [BillingMode] on `BillingSession` for offline vs online license behavior:
-  - `BillingMode.offline` — restore/verify cached license JWT only (no license HTTP).
-  - `BillingMode.online` — allow `syncOnlineForAccount` / poll when entitlements exist.
-- License verify/sync/bootstrap **require** `two-key-core` via FRB wire (`RustBillingCore`). Hosts must not import Rust crates. Fetch binaries with `scripts/fetch-binaries.*` (or `TWOKEY_CORE_LIB` / `TWOKEY_CORE_DEV_DIR` for local builds).
+- Default [BillingMode] is `offline`. Using-party hosts (Scomm Email, Outlook) must not
+  call `GET /api/v1/license` or Better Auth just to license the app.
+  - `BillingMode.offline` (default) — restore/verify a pasted signed snapshot (no license HTTP).
+  - `BillingMode.online` — kept compiled; `syncOnlineForAccount` / poll may be re-enabled later.
+- Copy DeviceID with `LicenseDeviceIdentity.exportPasteJson()` (`friendlyName` + `publicJwk` only).
+  Bind and issue in the portal (Settings → Devices). Paste the signed snapshot back.
+  The snapshot has **no license TTL**; regenerate from the portal when any included
+  `subscriptions[].valid_until` is past. X.509 is not the license format.
+- License offline verify uses `two-key-core` via FRB when the native library is loaded,
+  otherwise Dart ES256. Hosts must not import Rust crates. Fetch binaries with
+  `scripts/fetch-binaries.*` (or `TWOKEY_CORE_LIB` / `TWOKEY_CORE_DEV_DIR` for local builds).
 
 ```dart
-final session = BillingSession(
-  store: store,
-  mode: BillingMode.online, // or BillingMode.offline
-);
-session.setOnline(false); // → BillingMode.offline
-await BillingSdk.configureFrom(config); // rustCore when lib available
+final session = BillingSession(store: store); // BillingMode.offline
+await BillingSdk.configureFrom(config);
+final identity = await keystore.ensureForAccount(accountKey);
+final paste = identity.copyWith(friendlyName: 'secMail').exportPasteJson();
+// User binds paste JSON in the portal, then:
+await session.verifyOfflineToken(accountKey: accountKey, token: pastedSnapshot);
 ```
 
 See [retire-billing-dart-sdk.md](retire-billing-dart-sdk.md) and `packages/dart/lib/src/frb/`.
@@ -61,15 +68,16 @@ import {
 } from "@2key/browser-sdk";
 ```
 
-Typical browser flow:
+Typical **paying-party portal** flow:
 
 1. Better Auth cookie session via redirect (`socialSignInUrl` / host auth client).
-2. **Using-party** (secMail, Outlook): `acquireUsingPartyApiToken(config)` — binds personal slug `me` if the session has no org, then mints. Show **all assigned seats** from `GET /api/v1/license` (identity-wide). Do not ask the user to create or pick an organization.
-3. **Paying-party** (billing portal): `acquireApiToken(config)` — on `orgPickRequired` / `ORG_SLUG_REQUIRED`, bind `me` or a company slug in the portal UI, then remint.
-4. `BillingApiClient.ensureBillingContext` / `fetchLicense` / `fetchPlans`.
-5. `verifyLicenseJwt` offline with the public PEM.
-6. Portal handoff from native: `portalHandoffUrl` + OTT from auth host. Hosts must pass `portalBaseUrl` (or open the configured portal URL) — never derive the portal from the billing API origin alone.
-7. AuthZ: `authorize` / `enforceLocally` before privileged client actions (server always re-checks).
+2. `acquireApiToken(config)` — on `orgPickRequired` / `ORG_SLUG_REQUIRED`, bind `me` or a company slug in the portal UI, then remint.
+3. Bind devices and **issue** a signed snapshot (`POST /api/v1/license` or bind with `issueLicense`). Do not call `GET /api/v1/license` for using-party clients.
+4. `verifyLicenseJwt` offline with the public PEM (no JWT `exp` required; reject if any `valid_until` is past).
+5. Portal handoff from native: `portalHandoffUrl` + OTT from auth host. Hosts must pass `portalBaseUrl` (or open the configured portal URL) — never derive the portal from the billing API origin alone.
+6. AuthZ: `authorize` / `enforceLocally` before privileged client actions (server always re-checks).
+
+**Using-party** (secMail, Outlook): do **not** use Better Auth for licensing. DeviceID → copy paste JSON → portal Settings → Devices → paste signed snapshot → `restore()` / `pasteLicense()`. Public `GET /api/v1/plans` may still be used for shop CTAs without a user token.
 
 The SPA must **not** import `better-auth` server plugins or private core binaries.
 
@@ -86,9 +94,6 @@ Production add-in origin: `https://office.scomm.ai`.
 ```ts
 import {
   createBillingClient,
-  acquireApiToken,
-  signInWithEmail,
-  fetchOAuthProviders,
 } from "@2key/browser-sdk";
 
 const billing = createBillingClient({
@@ -97,9 +102,9 @@ const billing = createBillingClient({
   storagePrefix: "scomm-office",
   catalog: { productIds: ["prod_mail"], offeringCodes: ["ai_assistant"], addonCodes: ["ai_assistant"] },
 });
-await billing.ensureDeviceId();
+const pasteJson = await billing.exportDevicePaste({ friendlyName: "Outlook" });
 await billing.restore();
-await billing.syncLicense({ accessToken });
+await billing.pasteLicense(snapshotFromPortal);
 if (!billing.hasProduct("prod_mail")) { /* locked */ }
 ```
 

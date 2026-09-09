@@ -64,7 +64,8 @@ test("createBillingClient restore + catalog gates", async () => {
     claims: Record<string, unknown>;
   };
   const now = Math.floor(Date.now() / 1000);
-  const claims = { ...raw.claims, iat: now, exp: now + 3600 };
+  const { exp: _omitExp, ...rest } = raw.claims;
+  const claims = { ...rest, iat: now };
   const { pem, jwt } = await generateEs256PemAndSign(claims);
   const store = memorySessionStore();
   const billing = createBillingClient(
@@ -94,7 +95,8 @@ test("restore keeps in-memory license when storage has no JWT", async () => {
     claims: Record<string, unknown>;
   };
   const now = Math.floor(Date.now() / 1000);
-  const claims = { ...raw.claims, iat: now, exp: now + 3600 };
+  const { exp: _omitExp, ...rest } = raw.claims;
+  const claims = { ...rest, iat: now };
   const { pem, jwt } = await generateEs256PemAndSign(claims);
   const inner = memorySessionStore();
   const store = {
@@ -115,42 +117,44 @@ test("restore keeps in-memory license when storage has no JWT", async () => {
   assert.equal(restored?.payingParty.id, "pp_test_1");
 });
 
-test("syncLicense binds device then fetches license", async () => {
-  const raw = JSON.parse(readFileSync(fixturePath, "utf8")) as {
-    claims: Record<string, unknown>;
-  };
-  const now = Math.floor(Date.now() / 1000);
-  const claims = { ...raw.claims, iat: now, exp: now + 3600 };
-  const { pem, jwt } = await generateEs256PemAndSign(claims);
-
-  const fetchImpl: typeof fetch = async (input, init) => {
-    const url = String(input);
-    const method = (init?.method ?? "GET").toUpperCase();
-    if (method === "POST" && url.includes("/api/v1/license/devices")) {
-      return jsonResponse(200, {
-        success: true,
-        data: { device: { ski: "x" }, seat: { maxDevices: 5 } },
-      });
-    }
-    if (method === "GET" && url.includes("/api/v1/license") && !url.includes("/devices")) {
-      return jsonResponse(200, { success: true, data: { signedToken: jwt } }, { etag: '"abc"' });
-    }
-    return jsonResponse(404, { success: false, error: "not found" });
+test("syncLicense does not call GET when online sync is disabled", async () => {
+  const fetchImpl: typeof fetch = async () => {
+    throw new Error("HTTP should not run when online license sync is disabled");
   };
 
   const billing = createBillingClient(
     {
       apiBaseUrl: "https://billing.example.com",
-      publicKeyPem: pem,
+      publicKeyPem: "x",
       storagePrefix: "office-sync",
     },
     { store: memorySessionStore(), fetchImpl },
   );
 
-  const payload = await billing.syncLicense({ accessToken: "tok" });
-  assert.equal(payload.payingParty.id, "pp_test_1");
-  const device = await billing.ensureDeviceId();
-  assert.ok(device.ski);
+  await assert.rejects(
+    () => billing.syncLicense({ accessToken: "tok" }),
+    (e: unknown) => e instanceof TwoKeyError && e.code === "offline",
+  );
+});
+
+test("exportDevicePaste omits privateJwk", async () => {
+  const billing = createBillingClient(
+    {
+      apiBaseUrl: "https://billing.example.com",
+      publicKeyPem: "x",
+      storagePrefix: "office-paste",
+    },
+    { store: memorySessionStore() },
+  );
+  const json = await billing.exportDevicePaste({ friendlyName: "Outlook" });
+  const parsed = JSON.parse(json) as {
+    friendlyName?: string;
+    publicJwk?: unknown;
+    privateJwk?: unknown;
+  };
+  assert.equal(parsed.friendlyName, "Outlook");
+  assert.ok(parsed.publicJwk);
+  assert.equal(parsed.privateJwk, undefined);
 });
 
 test("bindLicenseDevice maps HTTP 409 to conflict with device details", async () => {

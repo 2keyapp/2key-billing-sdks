@@ -53,6 +53,8 @@ export {
   verifyLicenseJwt,
   BrowserSessionManager,
   LicenseDeviceKeystore,
+  exportDevicePaste,
+  ONLINE_LICENSE_SYNC_ENABLED,
   localStorageSessionStore,
   memorySessionStore,
   parsePlan,

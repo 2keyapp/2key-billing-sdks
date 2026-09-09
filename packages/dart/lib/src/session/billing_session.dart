@@ -44,19 +44,19 @@ class SessionVerifyFailure extends SessionVerifyOutcome {
   final String message;
 }
 
-/// Orchestrates auth tokens, license JWT persistence, online sync, and offline verify.
+/// Orchestrates auth tokens, license snapshot persistence, and offline verify.
 ///
-/// **Using party (SDK app):** sync loads assigned subscriptions into the license JWT.
+/// **Using party (SDK app):** paste a portal-issued signed snapshot (`restore` /
+/// `pasteLicense`). Online `GET /api/v1/license` is disabled by default.
 /// **Paying party (portal):** [BillingAccountSession.canOpenBillingPortal] is true when
 /// the authenticated identity owns the org; portal validates server-side.
 ///
-/// Periodic polling runs only when [shouldPollLicenseEntitlements] is true (assigned
-/// seat or subscriptions in the license). Manual [syncOnlineForAccount] always works
-/// when [mode] is [BillingMode.online].
+/// Periodic polling is a no-op while [mode] is [BillingMode.offline] (the default).
+/// Manual [syncOnlineForAccount] fails without HTTP until [BillingMode.online].
 class BillingSession {
   BillingSession({
     required BillingSessionStore store,
-    BillingMode mode = BillingMode.online,
+    BillingMode mode = BillingMode.offline,
   }) : _store = store,
        _mode = mode;
 

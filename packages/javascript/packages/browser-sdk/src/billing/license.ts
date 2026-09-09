@@ -71,7 +71,8 @@ export type BillingSubscription = {
 
 export type LicensePayload = {
   payloadVersion: number;
-  expiresAtUnix: number;
+  /** Optional JWT `exp` if present. License validity is subscription `valid_until`. */
+  expiresAtUnix?: number;
   issuedAtUnix?: number;
   issuer?: string;
   audience?: string;
@@ -257,7 +258,7 @@ export function parseLicenseClaims(claims: unknown): LicensePayload {
       : undefined;
   return {
     payloadVersion,
-    expiresAtUnix: asInt(m.exp) ?? 4_102_444_800,
+    expiresAtUnix: asInt(m.exp),
     issuedAtUnix: asInt(m.iat),
     issuer: asString(m.iss),
     audience: typeof m.aud === "string" ? m.aud : undefined,
