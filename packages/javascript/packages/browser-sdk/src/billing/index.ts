@@ -21,6 +21,8 @@ export {
   isSubscriptionActive,
   licenseEntitlements,
   licenseListsSki,
+  catalogAllowsSubscription,
+  subscriptionFeatureCodes,
   type LicensePayload,
   type BillingSubscription,
   type PayingParty,
@@ -39,9 +41,14 @@ export {
 export { parsePlan, type Plan } from "./catalog.js";
 export {
   type OfferingCatalog,
+  type HostsCatalogDocument,
+  type HostCatalogSlice,
+  catalogProductKeys,
   catalogKnowsProduct,
   catalogKnowsOffering,
   catalogKnowsAddon,
+  parseHostsCatalog,
+  catalogForHost,
 } from "./offering-catalog.js";
 export {
   LicenseDeviceKeystore,

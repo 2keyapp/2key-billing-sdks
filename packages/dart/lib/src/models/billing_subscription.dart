@@ -1,3 +1,4 @@
+import '../catalog/offering_catalog.dart';
 import 'jwt_payload_keys.dart';
 
 /// Bound app_client device claim on a license subscription.
@@ -301,6 +302,35 @@ class BillingSubscription {
     }
     final needle = addonRef.trim().toLowerCase();
     return offerings.any((o) => o.addonCode?.toLowerCase() == needle);
+  }
+
+  /// Addon / offering codes on this seat (JWT may list codes this host does not gate).
+  Set<String> get featureCodes {
+    final codes = <String>{};
+    final addon = addonCode?.trim();
+    if (addon != null && addon.isNotEmpty) codes.add(addon);
+    for (final offering in offerings) {
+      final offeringCode = offering.offeringCode.trim();
+      if (offeringCode.isNotEmpty) codes.add(offeringCode);
+      final offeringAddon = offering.addonCode?.trim();
+      if (offeringAddon != null && offeringAddon.isNotEmpty) {
+        codes.add(offeringAddon);
+      }
+    }
+    return codes;
+  }
+
+  /// Fail-closed host slice. JWT-only codes stay off.
+  /// Sharing a product name with the catalog is not enough when the seat
+  /// also lists add-on / offering codes this host does not gate.
+  bool isAllowedByCatalog(OfferingCatalog catalog) {
+    final codes = featureCodes;
+    if (codes.isEmpty) {
+      return catalog.knowsProduct(productId) || catalog.knowsProduct(productName);
+    }
+    return codes.any(
+      (code) => catalog.knowsAddon(code) || catalog.knowsOffering(code),
+    );
   }
 
   /// Whether the validity period has ended (now > valid_until).

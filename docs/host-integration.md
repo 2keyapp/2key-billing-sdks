@@ -47,6 +47,45 @@ final paste = identity.copyWith(friendlyName: 'secMail').exportPasteJson();
 await session.verifyOfflineToken(accountKey: accountKey, token: pastedSnapshot);
 ```
 
+### Static catalog (`hosts.json`)
+
+Each tenant supplies its own catalog seed. Bake **that** tenant’s `hosts.json` into the binary at **build time**. The SDK only intersects whatever catalog you pass with the verified JWT — it has no built-in product, host key, or SKU list. Do not fetch the file at runtime and do not hand-maintain offering lists in app code.
+
+Example (Scomm Email host keys):
+
+```dart
+import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:flutter/services.dart';
+import 'package:two_key_dart_sdk/two_key_dart_sdk.dart';
+
+final hosts = HostsCatalog.fromJson(
+  jsonDecode(await rootBundle.loadString('assets/billing/hosts.json'))
+      as Map<String, dynamic>,
+);
+final catalog = hosts.forHost(
+  Platform.isLinux ? 'scommLinux' : 'scommDesktop',
+);
+
+await BillingSdk.configureFrom(
+  BillingSdkConfig(
+    apiBaseUrl: apiBaseUrl,
+    catalog: catalog,
+    // …
+  ),
+);
+if (!session.accountSession!.licensePayload!.entitlementsAgainst(catalog)
+    .hasProduct('Scomm')) { /* locked */ }
+final seats = BillingSdk.hostSubscriptions(); // catalog ∩ JWT — not payload.subscriptions
+```
+
+Gates and seat lists must use `BillingSdk.entitlements()` / `hostSubscriptions()`.
+`payload.subscriptions` stays the **raw JWT** for device bind (`allowsDevice` / SKI checks).
+A code on the JWT but not in this host’s slice stays off.
+A code in the slice but missing from the JWT stays off.
+
+CI should copy `hosts.json` from the **tenant** catalog seed (`npm run validate` output) into the app asset path, then fail the build if the file is missing.
+
 See [retire-billing-dart-sdk.md](retire-billing-dart-sdk.md) and `packages/dart/lib/src/frb/`.
 
 ## Browser / SPA (billing-portal)
@@ -65,7 +104,7 @@ import {
   portalHandoffUrl,
   shopUrl,
   authorize,
-} from "@2key/browser-sdk";
+} from '@2key/browser-sdk';
 ```
 
 Typical **paying-party portal** flow:
@@ -92,21 +131,26 @@ See [office-add-in-embed.md](office-add-in-embed.md).
 Production add-in origin: `https://office.scomm.ai`.
 
 ```ts
-import {
-  createBillingClient,
-} from "@2key/browser-sdk";
+import {createBillingClient, catalogForHost} from '@2key/browser-sdk';
+import hosts from './hosts.json';
 
+const catalog = catalogForHost(hosts, 'office');
 const billing = createBillingClient({
   apiBaseUrl,
   publicKeyPem,
-  storagePrefix: "scomm-office",
-  catalog: { productIds: ["prod_mail"], offeringCodes: ["ai_assistant"], addonCodes: ["ai_assistant"] },
+  storagePrefix: 'scomm-office',
+  catalog,
 });
-const pasteJson = await billing.exportDevicePaste({ friendlyName: "Outlook" });
+const pasteJson = await billing.exportDevicePaste({friendlyName: 'Outlook'});
 await billing.restore();
 await billing.pasteLicense(snapshotFromPortal);
-if (!billing.hasProduct("prod_mail")) { /* locked */ }
+if (!billing.hasProduct('Scomm')) {
+  /* locked */
+}
+const seats = billing.hostSubscriptions(); // catalog ∩ JWT — not restore().subscriptions
 ```
+
+Do **not** iterate `payload.subscriptions` for feature lists or account UI. That list is the identity-wide JWT. Device bind (`licenseListsSki` / `allowsDevice`) still uses the raw JWT.
 
 ## CLI / ops
 
@@ -119,12 +163,12 @@ Pins and checksums: `core-binaries.lock.json`. Source stays in private `2key-cor
 
 ## Forbidden
 
-| Dependency | Why |
-|------------|-----|
-| `package:better_auth` in host apps | Auth client is internal to `two_key_dart_sdk` |
+| Dependency                                                 | Why                                              |
+| ---------------------------------------------------------- | ------------------------------------------------ |
+| `package:better_auth` in host apps                         | Auth client is internal to `two_key_dart_sdk`    |
 | `@better-auth/*` / `@2key/auth-native` in SPA product code | Server plugin / fork — not a browser product SDK |
-| `cargo` path dep on `two-key-core` | Binary Private Core — fetch release libs only |
-| `@2key/billing-core` | Private server package |
+| `cargo` path dep on `two-key-core`                         | Binary Private Core — fetch release libs only    |
+| `@2key/billing-core`                                       | Private server package                           |
 
 ## After Phase 5 push (better-auth)
 

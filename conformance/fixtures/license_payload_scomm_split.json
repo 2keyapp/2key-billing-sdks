@@ -18,6 +18,7 @@
         "plan_id": "10",
         "plan_name": "Linux Version",
         "product_id": "prod_mail",
+        "product_name": "Scomm",
         "quantity": 1,
         "subscription_status": "active",
         "valid_from": 1700000000,
@@ -29,6 +30,7 @@
             "offering_id": "off_linux",
             "offering_code": "linux",
             "product_id": "prod_mail",
+            "product_name": "Scomm",
             "units": 1,
             "resources": { "addon_code": "linux" }
           }
@@ -39,6 +41,7 @@
         "plan_id": "11",
         "plan_name": "Outlook OpenPGP ECC",
         "product_id": "prod_mail",
+        "product_name": "Scomm",
         "quantity": 1,
         "subscription_status": "active",
         "valid_from": 1700000000,
@@ -50,6 +53,7 @@
             "offering_id": "off_pgp",
             "offering_code": "pgp",
             "product_id": "prod_mail",
+            "product_name": "Scomm",
             "units": 1,
             "resources": { "addon_code": "pgp" }
           }
@@ -60,6 +64,7 @@
         "plan_id": "12",
         "plan_name": "Outlook OpenPGP ECC+PQC",
         "product_id": "prod_mail",
+        "product_name": "Scomm",
         "quantity": 1,
         "subscription_status": "active",
         "valid_from": 1700000000,
@@ -71,6 +76,7 @@
             "offering_id": "off_pqc",
             "offering_code": "pqc",
             "product_id": "prod_mail",
+            "product_name": "Scomm",
             "units": 1,
             "resources": { "addon_code": "pqc" }
           }
@@ -81,6 +87,7 @@
         "plan_id": "13",
         "plan_name": "Local-AI",
         "product_id": "prod_mail",
+        "product_name": "Scomm",
         "quantity": 1,
         "subscription_status": "active",
         "valid_from": 1700000000,
@@ -92,6 +99,7 @@
             "offering_id": "off_ai",
             "offering_code": "ai_assistant",
             "product_id": "prod_mail",
+            "product_name": "Scomm",
             "units": 1,
             "resources": { "addon_code": "ai_assistant" }
           }

@@ -52,7 +52,8 @@ class BillingSdkConfig {
   final Map<String, List<String>> addonPlanNameHints;
 
   /// Static offerings this binary can gate. Intersected with the verified JWT.
-  /// When null, [LicenseEntitlements] uses JWT claims only.
+  /// Bake the tenant’s `hosts.json` via `HostsCatalog.forHost`. When null,
+  /// [LicenseEntitlements] uses JWT claims only.
   final OfferingCatalog? catalog;
 
   /// Resolved portal origin (explicit [portalBaseUrl] or [apiBaseUrl]).

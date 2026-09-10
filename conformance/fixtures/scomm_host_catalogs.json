@@ -1,41 +1,42 @@
 {
-  "productIds": ["prod_mail", "secmail"],
+  "productNames": ["Scomm"],
   "hosts": {
-    "secmailDesktop": {
+    "scommDesktop": {
       "offeringCodes": [
         "pqc",
         "ai_assistant",
-        "accent_color",
         "scomm_connector",
-        "scomm_connector_5"
-      ],
-      "addonCodes": ["pqc", "ai_assistant", "accent_color", "scomm_connector"]
-    },
-    "secmailLinux": {
-      "offeringCodes": [
-        "pqc",
-        "ai_assistant",
         "accent_color",
-        "scomm_connector",
-        "scomm_connector_5",
-        "linux"
+        "ai_tokens_1m"
       ],
       "addonCodes": [
         "pqc",
         "ai_assistant",
-        "accent_color",
         "scomm_connector",
-        "linux"
+        "accent_color",
+        "ai_tokens_1m"
+      ]
+    },
+    "scommLinux": {
+      "offeringCodes": [
+        "pqc",
+        "linux",
+        "ai_assistant",
+        "scomm_connector",
+        "accent_color",
+        "ai_tokens_1m"
+      ],
+      "addonCodes": [
+        "pqc",
+        "linux",
+        "ai_assistant",
+        "scomm_connector",
+        "accent_color",
+        "ai_tokens_1m"
       ]
     },
     "office": {
-      "offeringCodes": [
-        "pgp",
-        "pqc",
-        "ai_assistant",
-        "scomm_connector",
-        "scomm_connector_5"
-      ],
+      "offeringCodes": ["pgp", "pqc", "ai_assistant", "scomm_connector"],
       "addonCodes": ["pgp", "pqc", "ai_assistant", "scomm_connector"]
     }
   }

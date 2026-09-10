@@ -12,6 +12,7 @@ import {
   licenseListsSki,
   type LicenseEntitlementsView,
   type LicensePayload,
+  type BillingSubscription,
 } from "./license.js";
 import {
   BrowserSessionManager,
@@ -198,6 +199,14 @@ export class BillingClient {
 
   hasAddon(addonCode: string): boolean {
     return this.entitlements().hasAddon(addonCode);
+  }
+
+  /**
+   * Seats this binary may show (`config.catalog ∩ JWT`).
+   * Use this instead of `restore()`/`payload.subscriptions`.
+   */
+  hostSubscriptions(nowUnix?: number): BillingSubscription[] {
+    return this.entitlements(nowUnix).subscriptions;
   }
 
   startPolling(opts: {

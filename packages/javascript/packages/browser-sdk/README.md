@@ -26,24 +26,28 @@ import { createAdminClient, createMachineAuthnClient } from "@2key/browser-sdk/d
 ```
 
 ```ts
+import { catalogForHost, createBillingClient } from "@2key/browser-sdk";
+import hosts from "./hosts.json";
+
 const billing = createBillingClient({
   apiBaseUrl: "https://billing.example.com",
   publicKeyPem,
   storagePrefix: "my-app",
-  catalog: {
-    productIds: ["prod_mail"],
-    offeringCodes: ["ai_assistant"],
-    addonCodes: ["ai_assistant"],
-  },
+  catalog: catalogForHost(hosts, "<hostKey>"),
 });
 
 await billing.ensureDeviceId({ friendlyName: "Office WebView" });
 await billing.restore();
 await billing.syncLicense({ accessToken });
-if (!billing.hasProduct("prod_mail")) {
+if (!billing.hasProduct("<productName>")) {
   /* locked */
 }
+const seats = billing.hostSubscriptions();
 ```
+
+Bake **this tenant’s** `hosts.json` at build time. `catalogForHost(hosts, hostKey)` picks one slice from that file. Product identity is a catalog name, not a Postgres serial id. The SDK has no built-in tenant catalog.
+
+Gates and seat lists use `billing.entitlements()` / `hostSubscriptions()` (`catalog ∩ JWT`). Do not iterate `restore()` / `payload.subscriptions` for UI — that list is the full identity JWT. Device bind still uses the raw JWT.
 
 ## Pillars
 

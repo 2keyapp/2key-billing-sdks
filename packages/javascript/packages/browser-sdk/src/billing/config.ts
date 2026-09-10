@@ -26,6 +26,9 @@ export type SdkConfig = {
   deepLinkScheme?: string;
   /**
    * Static offerings this binary can gate. Intersected with the verified JWT.
+   * Bake this tenant’s `hosts.json` and pass `catalogForHost(hosts, hostKey)`.
+   * When set, `entitlements()` / `hostSubscriptions()` hide JWT codes that
+   * are not in this host’s slice. Device bind still uses the raw JWT.
    * When omitted, `licenseEntitlements` uses JWT claims only.
    */
   catalog?: OfferingCatalog;
