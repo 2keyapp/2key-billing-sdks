@@ -32,7 +32,7 @@ Same OpenAPI, same conformance fixtures, same gate names. Different language wra
 
 ## 3. Commercial catalog (static offerings)
 
-At **configure**, the host passes the products and offerings **this binary knows how to gate**. At **runtime**, the signed license says which of those the user has.
+At **configure**, the host passes the products and offerings **this binary knows how to gate** (from **this tenant’s** `hosts.json`). At **runtime**, the signed license says which of those the user has. The SDK intersection is generic: it never hard-codes tenant names, host keys, or SKUs.
 
 ```
 static catalog (build)  ∩  verified signed snapshot (runtime)  →  gates + quotas
@@ -40,9 +40,9 @@ static catalog (build)  ∩  verified signed snapshot (runtime)  →  gates + qu
 
 `GET /api/v1/plans` is shop/CTA only — never the source of what the app enforces.
 
-Do **not** use `@2key/catalog-scomm` for Outlook. That seed is Scomm Workflows (channels / FSM). Bake seed-repo `hosts.json` and call `catalogForHost(hosts, "office")`. Outlook must **not** list `linux`.
+Do **not** use `@2key/catalog-scomm` for Outlook. That seed is Scomm Workflows (channels / FSM). Bake this tenant’s `hosts.json` and call `catalogForHost(hosts, "office")`. Outlook must **not** list `linux`.
 
-Copy `hosts.json` from the catalog seed repo at **build time** (CI checkout or `curl` of the committed file). Do not fetch it when the add-in starts.
+Copy `hosts.json` from the tenant catalog seed at **build time** (CI checkout or `curl` of the committed file). Do not fetch it when the add-in starts.
 
 ### Target host API (after parity)
 

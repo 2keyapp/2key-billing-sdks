@@ -4,9 +4,11 @@
  * Runtime gates are `static catalog ∩ verified license JWT`.
  * Unknown JWT codes are ignored; catalog codes missing from the JWT fail closed.
  *
- * Bake seed-repo `hosts.json` at build time and pass `catalogForHost(hosts, hostKey)`
- * into `createBillingClient`. Product identity is the catalog **name**
- * (`productNames`, e.g. `"Scomm"`), not a Postgres serial `products.id`.
+ * Bake the tenant’s `hosts.json` at build time and pass
+ * `catalogForHost(hosts, hostKey)` into `createBillingClient`. Product
+ * identity is a catalog **name** (`productNames`), not a Postgres serial
+ * `products.id`. Host keys and SKU lists come from that file — the SDK
+ * has no built-in tenant catalog.
  */
 import { TwoKeyError } from "./errors.js";
 
@@ -16,7 +18,7 @@ export type HostCatalogSlice = {
 };
 
 /**
- * Seed-repo `hosts.json` (written by `npm run validate`).
+ * Tenant `hosts.json` (written by that catalog’s `npm run validate`).
  * `productNames` are `catalog.json` product object keys.
  */
 export type HostsCatalogDocument = {
@@ -127,7 +129,7 @@ export function parseHostsCatalog(raw: unknown): HostsCatalogDocument {
 }
 
 /**
- * Offering catalog for one baked host key (`office`, `scommDesktop`, …).
+ * Offering catalog for one host key from the tenant’s baked `hosts.json`.
  */
 export function catalogForHost(raw: unknown, hostKey: string): OfferingCatalog {
   const doc = parseHostsCatalog(raw);

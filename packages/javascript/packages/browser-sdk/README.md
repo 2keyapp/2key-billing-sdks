@@ -33,21 +33,21 @@ const billing = createBillingClient({
   apiBaseUrl: "https://billing.example.com",
   publicKeyPem,
   storagePrefix: "my-app",
-  catalog: catalogForHost(hosts, "office"),
+  catalog: catalogForHost(hosts, "<hostKey>"),
 });
 
 await billing.ensureDeviceId({ friendlyName: "Office WebView" });
 await billing.restore();
 await billing.syncLicense({ accessToken });
-if (!billing.hasProduct("Scomm")) {
+if (!billing.hasProduct("<productName>")) {
   /* locked */
 }
 const seats = billing.hostSubscriptions();
 ```
 
-Bake `hosts.json` from the catalog seed repo at build time. `catalogForHost` picks this binary’s slice (`office`, `scommDesktop`, `scommLinux`). Product identity is the catalog name, not a Postgres serial id.
+Bake **this tenant’s** `hosts.json` at build time. `catalogForHost(hosts, hostKey)` picks one slice from that file. Product identity is a catalog name, not a Postgres serial id. The SDK has no built-in tenant catalog.
 
-Gates and seat lists use `billing.entitlements()` / `hostSubscriptions()` (`catalog ∩ JWT`). Do not iterate `restore()` / `payload.subscriptions` for UI — that list is the full identity JWT (linux stays off in Office; pgp stays off in Email). Device bind still uses the raw JWT.
+Gates and seat lists use `billing.entitlements()` / `hostSubscriptions()` (`catalog ∩ JWT`). Do not iterate `restore()` / `payload.subscriptions` for UI — that list is the full identity JWT. Device bind still uses the raw JWT.
 
 ## Pillars
 

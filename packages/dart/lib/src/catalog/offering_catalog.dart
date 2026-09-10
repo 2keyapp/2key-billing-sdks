@@ -4,9 +4,10 @@
 /// JWT. Unknown JWT codes are ignored; catalog codes missing from the JWT fail closed.
 /// Omit the catalog to keep JWT-only gating.
 ///
-/// Bake seed-repo `hosts.json` at build time (`HostsCatalog.forHost`) into
-/// `BillingSdkConfig.catalog`. Product identity is the catalog **name**
-/// ([productNames], e.g. `Scomm`), not a Postgres serial id.
+/// Bake the tenant’s `hosts.json` at build time (`HostsCatalog.forHost`) into
+/// `BillingSdkConfig.catalog`. Product identity is a catalog **name**
+/// ([productNames]), not a Postgres serial id. Host keys and SKU lists
+/// come from that file — the SDK has no built-in tenant catalog.
 class OfferingCatalog {
   const OfferingCatalog({
     this.productNames = const {},

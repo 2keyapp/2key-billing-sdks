@@ -52,7 +52,7 @@ class BillingSdkConfig {
   final Map<String, List<String>> addonPlanNameHints;
 
   /// Static offerings this binary can gate. Intersected with the verified JWT.
-  /// Bake seed-repo `hosts.json` via `HostsCatalog.forHost`. When null,
+  /// Bake the tenant’s `hosts.json` via `HostsCatalog.forHost`. When null,
   /// [LicenseEntitlements] uses JWT claims only.
   final OfferingCatalog? catalog;
 

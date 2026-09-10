@@ -1,6 +1,6 @@
 import '../catalog/offering_catalog.dart';
 
-/// One host slice from seed-repo `hosts.json`.
+/// One host slice from a tenant `hosts.json`.
 class HostCatalogSlice {
   const HostCatalogSlice({
     required this.offeringCodes,
@@ -18,7 +18,7 @@ class HostCatalogSlice {
   }
 }
 
-/// Parsed seed-repo `hosts.json`. Apps bake this file at build time.
+/// Parsed tenant `hosts.json`. Apps bake this file at build time.
 class HostsCatalog {
   const HostsCatalog({
     required this.productNames,
@@ -54,7 +54,7 @@ class HostsCatalog {
     return HostsCatalog(productNames: productNames, hosts: Map.unmodifiable(hosts));
   }
 
-  /// Offering catalog for one baked host key (`office`, `scommDesktop`, …).
+  /// Offering catalog for one host key from the tenant’s baked `hosts.json`.
   OfferingCatalog forHost(String hostKey) {
     final slice = hosts[hostKey];
     if (slice == null) {

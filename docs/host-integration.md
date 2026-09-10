@@ -49,7 +49,9 @@ await session.verifyOfflineToken(accountKey: accountKey, token: pastedSnapshot);
 
 ### Static catalog (`hosts.json`)
 
-Bake the seed-repo `hosts.json` into the binary at **build time**. Do not fetch it at runtime and do not hand-maintain offering lists.
+Each tenant supplies its own catalog seed. Bake **that** tenant’s `hosts.json` into the binary at **build time**. The SDK only intersects whatever catalog you pass with the verified JWT — it has no built-in product, host key, or SKU list. Do not fetch the file at runtime and do not hand-maintain offering lists in app code.
+
+Example (Scomm Email host keys):
 
 ```dart
 import 'dart:convert';
@@ -79,10 +81,10 @@ final seats = BillingSdk.hostSubscriptions(); // catalog ∩ JWT — not payload
 
 Gates and seat lists must use `BillingSdk.entitlements()` / `hostSubscriptions()`.
 `payload.subscriptions` stays the **raw JWT** for device bind (`allowsDevice` / SKI checks).
-A code on the JWT but not in this host’s slice stays off (linux in Office, pgp in Email).
+A code on the JWT but not in this host’s slice stays off.
 A code in the slice but missing from the JWT stays off.
 
-CI should copy `hosts.json` from the catalog seed repo (`npm run validate` output) into the app asset path, then fail the build if the file is missing.
+CI should copy `hosts.json` from the **tenant** catalog seed (`npm run validate` output) into the app asset path, then fail the build if the file is missing.
 
 See [retire-billing-dart-sdk.md](retire-billing-dart-sdk.md) and `packages/dart/lib/src/frb/`.
 
@@ -148,7 +150,7 @@ if (!billing.hasProduct('Scomm')) {
 const seats = billing.hostSubscriptions(); // catalog ∩ JWT — not restore().subscriptions
 ```
 
-Do **not** iterate `payload.subscriptions` for feature lists or account UI. That list is the identity-wide JWT (linux + pgp + …). Device bind (`licenseListsSki` / `allowsDevice`) still uses the raw JWT.
+Do **not** iterate `payload.subscriptions` for feature lists or account UI. That list is the identity-wide JWT. Device bind (`licenseListsSki` / `allowsDevice`) still uses the raw JWT.
 
 ## CLI / ops
 

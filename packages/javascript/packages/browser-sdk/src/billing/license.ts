@@ -326,9 +326,9 @@ export function subscriptionFeatureCodes(sub: BillingSubscription): string[] {
 
 /**
  * Fail-closed host slice: a seat is visible only when at least one of its
- * feature codes is in this binary’s catalog. JWT-only codes (linux in Office,
- * pgp in Email) stay off. Product-name match is not enough — linux seats are
- * still product `Scomm`.
+ * feature codes is in this binary’s catalog. JWT-only codes stay off.
+ * Sharing a product name with the catalog is not enough when the seat
+ * also lists add-on / offering codes this host does not gate.
  */
 export function catalogAllowsSubscription(
   catalog: OfferingCatalog,

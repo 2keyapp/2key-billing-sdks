@@ -320,8 +320,9 @@ class BillingSubscription {
     return codes;
   }
 
-  /// Fail-closed host slice. JWT-only codes (linux in Office, pgp in Email) stay off.
-  /// Product-name match is not enough — linux seats are still product `Scomm`.
+  /// Fail-closed host slice. JWT-only codes stay off.
+  /// Sharing a product name with the catalog is not enough when the seat
+  /// also lists add-on / offering codes this host does not gate.
   bool isAllowedByCatalog(OfferingCatalog catalog) {
     final codes = featureCodes;
     if (codes.isEmpty) {
