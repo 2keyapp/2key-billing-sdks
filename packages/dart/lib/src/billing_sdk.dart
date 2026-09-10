@@ -9,6 +9,7 @@ import 'package:two_key_dart_sdk/src/keys/public_key_loader.dart';
 import 'package:two_key_dart_sdk/src/keys/public_key_loader_asset.dart';
 import 'package:two_key_dart_sdk/src/license/dart_license_verify.dart';
 import 'package:two_key_dart_sdk/src/models/billing_stats.dart';
+import 'package:two_key_dart_sdk/src/models/billing_subscription.dart';
 import 'package:two_key_dart_sdk/src/models/billing_token_error.dart';
 import 'package:two_key_dart_sdk/src/models/billing_token_payload.dart';
 import 'package:two_key_dart_sdk/src/models/license_entitlements.dart';
@@ -192,6 +193,10 @@ class BillingSdk {
     if (payload == null) return null;
     return LicenseEntitlements.fromPayload(payload, catalog: _config?.catalog);
   }
+
+  /// Seats this binary may show (`catalog ∩ JWT`). Empty when no license.
+  static List<BillingSubscription> hostSubscriptions() =>
+      entitlements()?.subscriptions ?? const [];
 
   static Future<SyncResult> syncFromServer({
     required String authorizationToken,

@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { normalizeApiBaseUrl } from "./config.ts";
 import { licenseEntitlements, parseLicenseClaims } from "./license.ts";
+import { catalogForHost } from "./offering-catalog.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -98,43 +99,95 @@ test("Scomm host catalogs split pgp / pqc / linux on one JWT", () => {
   const split = JSON.parse(readFileSync(splitPath, "utf8")) as {
     claims: unknown;
   };
-  const catalogs = JSON.parse(readFileSync(catalogsPath, "utf8")) as {
-    productIds: string[];
-    hosts: Record<string, { offeringCodes: string[]; addonCodes: string[] }>;
-  };
+  const hosts = JSON.parse(readFileSync(catalogsPath, "utf8"));
   const payload = parseLicenseClaims(split.claims);
-  const productIds = catalogs.productIds;
-
-  function host(name: string) {
-    const row = catalogs.hosts[name];
-    if (!row) throw new Error(`unknown host catalog: ${name}`);
-    return {
-      productIds,
-      offeringCodes: row.offeringCodes,
-      addonCodes: row.addonCodes,
-    };
-  }
 
   const open = licenseEntitlements(payload, 1_700_000_000);
   assert.equal(open.hasAddon("linux"), true);
   assert.equal(open.hasAddon("pgp"), true);
   assert.equal(open.hasAddon("pqc"), true);
+  assert.equal(open.hasProduct("prod_mail"), true);
 
-  const email = licenseEntitlements(payload, 1_700_000_000, host("secmailDesktop"));
+  const email = licenseEntitlements(payload, 1_700_000_000, catalogForHost(hosts, "scommDesktop"));
+  assert.equal(email.hasProduct("Scomm"), true);
+  assert.equal(email.hasProduct("prod_mail"), false);
+  assert.equal(email.resourceForProduct("Scomm", "max_devices"), 5);
+  assert.equal(email.resourceInt("max_devices"), 5);
   assert.equal(email.hasAddon("pqc"), true);
   assert.equal(email.hasAddon("ai_assistant"), true);
   assert.equal(email.hasAddon("pgp"), false);
   assert.equal(email.hasAddon("linux"), false);
 
-  const emailLinux = licenseEntitlements(payload, 1_700_000_000, host("secmailLinux"));
+  const emailLinux = licenseEntitlements(
+    payload,
+    1_700_000_000,
+    catalogForHost(hosts, "scommLinux"),
+  );
   assert.equal(emailLinux.hasAddon("linux"), true);
   assert.equal(emailLinux.hasAddon("pqc"), true);
   assert.equal(emailLinux.hasAddon("pgp"), false);
 
-  const office = licenseEntitlements(payload, 1_700_000_000, host("office"));
+  const office = licenseEntitlements(payload, 1_700_000_000, catalogForHost(hosts, "office"));
+  assert.equal(office.hasProduct("Scomm"), true);
   assert.equal(office.hasAddon("pgp"), true);
   assert.equal(office.hasAddon("pqc"), true);
   assert.equal(office.hasAddon("ai_assistant"), true);
   assert.equal(office.hasAddon("linux"), false);
   assert.equal(office.hasAddon("accent_color"), false);
+  assert.equal(
+    office.subscriptions.some((sub) => sub.addonCode === "linux"),
+    false,
+  );
+  assert.equal(
+    office.subscriptions.some((sub) => sub.addonCode === "ai_assistant"),
+    true,
+  );
+});
+
+test("catalog productNames remap serial JWT product_id without double-counting", () => {
+  const payload = parseLicenseClaims({
+    payload_version: 3,
+    paying_party: {
+      id: "pp1",
+      identity_provider: "google",
+      identity_subject: "sub",
+      billing_email: "a@b.com",
+    },
+    subscriptions: [
+      {
+        subscription_id: "s1",
+        plan_id: "1",
+        plan_name: "A",
+        product_id: "42",
+        product_name: "Scomm",
+        subscription_status: "active",
+        valid_until: 4102444800,
+        quantity: 1,
+        offerings: [
+          {
+            offering_id: "o1",
+            offering_code: "pqc",
+            product_id: "42",
+            product_name: "Scomm",
+            units: 1,
+            resources: { max_devices: 5, addon_code: "pqc" },
+          },
+        ],
+      },
+    ],
+    entitlements: {
+      by_product: { "42": { max_devices: 5 } },
+      addons: ["pqc"],
+      by_offering_code: { pqc: { addon_code: "pqc" } },
+    },
+  });
+  const gated = licenseEntitlements(payload, 1_700_000_000, {
+    productNames: ["Scomm"],
+    offeringCodes: ["pqc"],
+    addonCodes: ["pqc"],
+  });
+  assert.equal(gated.hasProduct("Scomm"), true);
+  assert.equal(gated.hasProduct("42"), false);
+  assert.equal(gated.resourceForProduct("Scomm", "max_devices"), 5);
+  assert.equal(gated.resourceInt("max_devices"), 5);
 });

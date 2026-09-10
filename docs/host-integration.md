@@ -47,6 +47,43 @@ final paste = identity.copyWith(friendlyName: 'secMail').exportPasteJson();
 await session.verifyOfflineToken(accountKey: accountKey, token: pastedSnapshot);
 ```
 
+### Static catalog (`hosts.json`)
+
+Bake the seed-repo `hosts.json` into the binary at **build time**. Do not fetch it at runtime and do not hand-maintain offering lists.
+
+```dart
+import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:flutter/services.dart';
+import 'package:two_key_dart_sdk/two_key_dart_sdk.dart';
+
+final hosts = HostsCatalog.fromJson(
+  jsonDecode(await rootBundle.loadString('assets/billing/hosts.json'))
+      as Map<String, dynamic>,
+);
+final catalog = hosts.forHost(
+  Platform.isLinux ? 'scommLinux' : 'scommDesktop',
+);
+
+await BillingSdk.configureFrom(
+  BillingSdkConfig(
+    apiBaseUrl: apiBaseUrl,
+    catalog: catalog,
+    // …
+  ),
+);
+if (!session.accountSession!.licensePayload!.entitlementsAgainst(catalog)
+    .hasProduct('Scomm')) { /* locked */ }
+final seats = BillingSdk.hostSubscriptions(); // catalog ∩ JWT — not payload.subscriptions
+```
+
+Gates and seat lists must use `BillingSdk.entitlements()` / `hostSubscriptions()`.
+`payload.subscriptions` stays the **raw JWT** for device bind (`allowsDevice` / SKI checks).
+A code on the JWT but not in this host’s slice stays off (linux in Office, pgp in Email).
+A code in the slice but missing from the JWT stays off.
+
+CI should copy `hosts.json` from the catalog seed repo (`npm run validate` output) into the app asset path, then fail the build if the file is missing.
+
 See [retire-billing-dart-sdk.md](retire-billing-dart-sdk.md) and `packages/dart/lib/src/frb/`.
 
 ## Browser / SPA (billing-portal)
@@ -94,19 +131,25 @@ Production add-in origin: `https://office.scomm.ai`.
 ```ts
 import {
   createBillingClient,
+  catalogForHost,
 } from "@2key/browser-sdk";
+import hosts from "./hosts.json";
 
+const catalog = catalogForHost(hosts, "office");
 const billing = createBillingClient({
   apiBaseUrl,
   publicKeyPem,
   storagePrefix: "scomm-office",
-  catalog: { productIds: ["prod_mail"], offeringCodes: ["ai_assistant"], addonCodes: ["ai_assistant"] },
+  catalog,
 });
 const pasteJson = await billing.exportDevicePaste({ friendlyName: "Outlook" });
 await billing.restore();
 await billing.pasteLicense(snapshotFromPortal);
-if (!billing.hasProduct("prod_mail")) { /* locked */ }
+if (!billing.hasProduct("Scomm")) { /* locked */ }
+const seats = billing.hostSubscriptions(); // catalog ∩ JWT — not restore().subscriptions
 ```
+
+Do **not** iterate `payload.subscriptions` for feature lists or account UI. That list is the identity-wide JWT (linux + pgp + …). Device bind (`licenseListsSki` / `allowsDevice`) still uses the raw JWT.
 
 ## CLI / ops
 

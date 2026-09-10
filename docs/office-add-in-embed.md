@@ -40,16 +40,22 @@ static catalog (build)  ∩  verified signed snapshot (runtime)  →  gates + qu
 
 `GET /api/v1/plans` is shop/CTA only — never the source of what the app enforces.
 
-Do **not** use `@2key/catalog-scomm` for Outlook. That seed is Scomm Workflows (channels / FSM). Outlook/secMail codes are the SecMail product (`ai_assistant`, `scomm_connector`, `pgp`, `pqc`, …) plus IDR if Local AI is billed. Outlook must **not** list `linux`. See section 9 for `SCOMM_OFFICE_CATALOG`.
+Do **not** use `@2key/catalog-scomm` for Outlook. That seed is Scomm Workflows (channels / FSM). Bake seed-repo `hosts.json` and call `catalogForHost(hosts, "office")`. Outlook must **not** list `linux`.
+
+Copy `hosts.json` from the catalog seed repo at **build time** (CI checkout or `curl` of the committed file). Do not fetch it when the add-in starts.
 
 ### Target host API (after parity)
 
 ```ts
+import { catalogForHost, createBillingClient } from "@2key/browser-sdk";
+import hosts from "./hosts.json";
+
+const catalog = catalogForHost(hosts, "office");
 const billing = createBillingClient({
   apiBaseUrl,
   publicKeyPem,
   storagePrefix: "scomm-office",
-  catalog: SCOMM_OFFICE_CATALOG,
+  catalog,
 });
 
 const deviceJson = await billing.exportDevicePaste({ friendlyName: "Outlook" });
@@ -57,11 +63,12 @@ await billing.restore();                       // verify cached signed snapshot
 await billing.pasteLicense(snapshotFromPortal);
 const e = billing.entitlements();
 
-if (!e.hasProduct("secmail")) { /* locked */ }
+if (!e.hasProduct("Scomm")) { /* locked */ }
 if (e.hasOffering("ai_assistant") || e.hasAddon("ai_assistant")) { /* BYOAI */ }
+const seats = billing.hostSubscriptions(); // never restore() / payload.subscriptions
 ```
 
-Unknown JWT offerings are ignored. Catalog offerings missing from the JWT fail closed. License JWT never contains prices.
+Unknown JWT offerings are ignored. Catalog offerings missing from the JWT fail closed. License JWT never contains prices. Seat UI must use `entitlements().subscriptions` / `hostSubscriptions()` so Office never lists `linux`.
 
 ## 4. SDK work before Office (`packages/javascript/packages/browser-sdk`)
 
@@ -154,7 +161,7 @@ Until this is named, `VITE_BILLING_ORIGIN` stays an env var.
 
 ### Same shop SKUs as secMail, or a new Outlook product?
 
-**Resolved (billing catalog split):** keep **one SecMail product** and **one identity-wide JWT**. Do not create a dedicated Office product. Hosts differ by **static catalog ID lists**.
+**Resolved (billing catalog split):** keep **one Scomm product** and **one identity-wide JWT**. Do not create a dedicated Office product. Hosts differ by the baked `hosts.json` slice.
 
 - Same price + both surfaces → **one** `addon_code` (`pqc`, `ai_assistant`, `scomm_connector`).
 - Different price or applicability → **split** (`pgp` is Office classical only; Email classical is ungated; `linux` is Email/Linux only).
@@ -162,18 +169,18 @@ Until this is named, `VITE_BILLING_ORIGIN` stays an env var.
 Gate with `catalog ∩ JWT`. `GET /api/v1/plans?surface=office` is shop/CTA only.
 
 ```ts
-/** Codes this add-in knows how to gate. `productIds` must match JWT `offerings[].product_id` (SecMail `products.id` string), not the slug "secmail". */
-export const SCOMM_OFFICE_CATALOG = {
-  productIds: ["<secmail-products.id>"],
-  offeringCodes: ["pgp", "pqc", "ai_assistant", "scomm_connector"],
-  addonCodes: ["pgp", "pqc", "ai_assistant", "scomm_connector"],
-} as const;
+import { catalogForHost } from "@2key/browser-sdk";
+import hosts from "./hosts.json";
 
+/** Codes this add-in knows how to gate. Product identity is the catalog name. */
+export const SCOMM_OFFICE_CATALOG = catalogForHost(hosts, "office");
+
+if (!e.hasProduct("Scomm")) { /* locked */ }
 if (e.hasAddon("pgp") || e.hasOffering("pgp")) { /* Outlook OpenPGP ECC — classical */ }
 // hasAddon("pqc") is catalog-ready only; do not show a PQC buy CTA until a PQC engine ships.
 ```
 
-Never list `linux` or `accent_color` in the Office catalog. SDK gate API is unchanged.
+Never list `linux` or `accent_color` in the Office catalog (`hosts.office` already omits them). SDK gate API is unchanged.
 
 ### What license check runs before IDR (local AI)?
 

@@ -88,6 +88,11 @@ test("createBillingClient restore + catalog gates", async () => {
   assert.equal(billing.hasOffering("scomm_connector_5"), true);
   assert.equal(billing.hasAddon("scomm_connector"), true);
   assert.equal(billing.hasProduct("unknown"), false);
+  assert.equal(
+    billing.hostSubscriptions().every((s) => s.addonCode !== "unknown"),
+    true,
+  );
+  assert.ok(billing.hostSubscriptions().length > 0);
 });
 
 test("restore keeps in-memory license when storage has no JWT", async () => {

@@ -103,51 +103,65 @@ void main() {
       final root = jsonDecode(
         _fixture('license_payload_scomm_split.json').readAsStringSync(),
       ) as Map<String, dynamic>;
-      final catalogs = jsonDecode(
+      final hostsJson = jsonDecode(
         _fixture('scomm_host_catalogs.json').readAsStringSync(),
       ) as Map<String, dynamic>;
       final claims = Map<String, dynamic>.from(root['claims'] as Map);
       final payload = BillingTokenPayload.fromJson(claims);
-      final productIds = Set<String>.from(
-        (catalogs['productIds'] as List).map((e) => e.toString()),
-      );
-
-      OfferingCatalog host(String name) {
-        final hosts = catalogs['hosts'] as Map<String, dynamic>;
-        final row = hosts[name] as Map<String, dynamic>;
-        return OfferingCatalog(
-          productIds: productIds,
-          offeringCodes: Set<String>.from(
-            (row['offeringCodes'] as List).map((e) => e.toString()),
-          ),
-          addonCodes: Set<String>.from(
-            (row['addonCodes'] as List).map((e) => e.toString()),
-          ),
-        );
-      }
+      final hosts = HostsCatalog.fromJson(hostsJson);
 
       final open = payload.entitlements;
       expect(open.hasAddon('linux'), isTrue);
       expect(open.hasAddon('pgp'), isTrue);
       expect(open.hasAddon('pqc'), isTrue);
+      expect(open.hasProduct('prod_mail'), isTrue);
 
-      final email = payload.entitlementsAgainst(host('secmailDesktop'));
+      final email = payload.entitlementsAgainst(hosts.forHost('scommDesktop'));
+      expect(email.hasProduct('Scomm'), isTrue);
+      expect(email.hasProduct('prod_mail'), isFalse);
+      expect(email.resourceForProduct('Scomm', 'max_devices'), 5);
+      expect(email.resourceInt('max_devices'), 5);
       expect(email.hasAddon('pqc'), isTrue);
       expect(email.hasAddon('ai_assistant'), isTrue);
       expect(email.hasAddon('pgp'), isFalse);
       expect(email.hasAddon('linux'), isFalse);
+      expect(
+        email.subscriptions.any((sub) => sub.addonCode == 'pgp'),
+        isFalse,
+      );
+      expect(
+        email.subscriptions.any((sub) => sub.addonCode == 'linux'),
+        isFalse,
+      );
 
-      final emailLinux = payload.entitlementsAgainst(host('secmailLinux'));
+      final emailLinux = payload.entitlementsAgainst(hosts.forHost('scommLinux'));
       expect(emailLinux.hasAddon('linux'), isTrue);
       expect(emailLinux.hasAddon('pqc'), isTrue);
       expect(emailLinux.hasAddon('pgp'), isFalse);
 
-      final office = payload.entitlementsAgainst(host('office'));
+      final office = payload.entitlementsAgainst(hosts.forHost('office'));
+      expect(office.hasProduct('Scomm'), isTrue);
       expect(office.hasAddon('pgp'), isTrue);
       expect(office.hasAddon('pqc'), isTrue);
       expect(office.hasAddon('ai_assistant'), isTrue);
       expect(office.hasAddon('linux'), isFalse);
       expect(office.hasAddon('accent_color'), isFalse);
+      expect(
+        office.subscriptions.any((sub) => sub.addonCode == 'linux'),
+        isFalse,
+      );
+      expect(
+        office.subscriptions.any((sub) => sub.addonCode == 'ai_assistant'),
+        isTrue,
+      );
+      expect(
+        billingHasActiveAddonRef(
+          payload,
+          'linux',
+          catalog: hosts.forHost('office'),
+        ),
+        isFalse,
+      );
     });
 
     test('sums same product across offerings when deriving client-side', () {

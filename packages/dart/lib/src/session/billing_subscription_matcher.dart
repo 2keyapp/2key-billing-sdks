@@ -1,3 +1,4 @@
+import '../catalog/offering_catalog.dart';
 import '../models/billing_subscription.dart';
 import '../models/billing_token_payload.dart';
 
@@ -7,17 +8,36 @@ import '../models/billing_token_payload.dart';
 /// [BillingSdkConfig.addonPlanNameHints] or the [planNameHints] parameter.
 const Map<String, List<String>> defaultAddonRefPlanNameHints = {};
 
+/// Addon / offering codes on a seat (JWT may list codes this host does not gate).
+Set<String> subscriptionFeatureCodes(BillingSubscription subscription) =>
+    subscription.featureCodes;
+
+/// Fail-closed host slice: JWT-only codes (linux in Office, pgp in Email) stay off.
+/// Product-name match is not enough — linux seats are still product `Scomm`.
+bool catalogAllowsSubscription(
+  OfferingCatalog catalog,
+  BillingSubscription subscription,
+) =>
+    subscription.isAllowedByCatalog(catalog);
+
 /// True when [subscription] is an active seat for stable billing code [addonRef].
 bool billingSubscriptionMatchesAddonRef(
   BillingSubscription subscription,
   String addonRef, {
   List<String> nameKeywords = const [],
   Map<String, List<String>> planNameHints = defaultAddonRefPlanNameHints,
+  OfferingCatalog? catalog,
 }) {
   if (!subscription.isActive) return false;
 
   final target = addonRef.trim().toLowerCase();
   if (target.isEmpty) return false;
+
+  if (catalog != null &&
+      !catalog.knowsAddon(target) &&
+      !catalog.knowsOffering(target)) {
+    return false;
+  }
 
   if (subscription.planId.toLowerCase() == target) return true;
   if (subscription.matchesAddonRef(target)) return true;
@@ -42,9 +62,16 @@ DateTime? billingRenewalForAddonRef(
   String addonRef, {
   List<String> nameKeywords = const [],
   Map<String, List<String>> planNameHints = defaultAddonRefPlanNameHints,
+  OfferingCatalog? catalog,
 }) {
   if (payload == null) return null;
-  final fromEntitlements = payload.entitlements.expiryForAddon(addonRef);
+  if (catalog != null &&
+      !catalog.knowsAddon(addonRef) &&
+      !catalog.knowsOffering(addonRef)) {
+    return null;
+  }
+  final fromEntitlements =
+      payload.entitlementsAgainst(catalog).expiryForAddon(addonRef);
   if (fromEntitlements != null) return fromEntitlements;
   for (final sub in payload.subscriptions) {
     if (!billingSubscriptionMatchesAddonRef(
@@ -52,6 +79,7 @@ DateTime? billingRenewalForAddonRef(
       addonRef,
       nameKeywords: nameKeywords,
       planNameHints: planNameHints,
+      catalog: catalog,
     )) {
       continue;
     }
@@ -65,11 +93,17 @@ bool billingHasActiveAddonRef(
   String addonRef, {
   List<String> nameKeywords = const [],
   Map<String, List<String>> planNameHints = defaultAddonRefPlanNameHints,
+  OfferingCatalog? catalog,
 }) {
   if (payload == null) return false;
+  if (catalog != null &&
+      !catalog.knowsAddon(addonRef) &&
+      !catalog.knowsOffering(addonRef)) {
+    return false;
+  }
   // Prefer Product→Resources entitlements (v3 addons list / offering resources).
-  if (payload.entitlements.hasAddon(addonRef) &&
-      payload.entitlements.hasAnyActiveSubscription) {
+  final entitlements = payload.entitlementsAgainst(catalog);
+  if (entitlements.hasAddon(addonRef) && entitlements.hasAnyActiveSubscription) {
     return true;
   }
   return payload.subscriptions.any(
@@ -78,6 +112,7 @@ bool billingHasActiveAddonRef(
       addonRef,
       nameKeywords: nameKeywords,
       planNameHints: planNameHints,
+      catalog: catalog,
     ),
   );
 }

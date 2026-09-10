@@ -14,6 +14,7 @@ class LicenseEntitlements {
     required this.byProduct,
     required this.addons,
     required this.offeringCodes,
+    required this.subscriptions,
   });
 
   final BillingTokenPayload payload;
@@ -23,15 +24,21 @@ class LicenseEntitlements {
   final Set<String> addons;
   final Set<String> offeringCodes;
 
+  /// Seats this host may show (`catalog ∩ JWT`). Raw JWT remains on
+  /// [BillingTokenPayload.subscriptions] for device bind.
+  final List<BillingSubscription> subscriptions;
+
   /// Build from a verified [BillingTokenPayload].
   ///
-  /// When [catalog] is set, product / offering / add-on sets are intersected
-  /// with the host catalog (fail-closed). Unknown JWT codes are dropped.
+  /// When [catalog] is set, product / offering / add-on sets **and**
+  /// [subscriptions] are intersected with the host catalog (fail-closed).
+  /// Unknown JWT codes are dropped. [BillingTokenPayload.subscriptions]
+  /// stays the raw JWT for device bind.
   factory LicenseEntitlements.fromPayload(
     BillingTokenPayload payload, {
     OfferingCatalog? catalog,
   }) {
-    final byProduct = <String, Map<String, int>>{};
+    var byProduct = <String, Map<String, int>>{};
     final addons = <String>{};
     final offerings = <String>{};
 
@@ -117,10 +124,16 @@ class LicenseEntitlements {
     }
 
     if (catalog != null) {
-      byProduct.removeWhere((k, _) => !catalog.knowsProduct(k));
+      byProduct = _applyCatalogToByProduct(byProduct, payload, catalog);
       addons.removeWhere((a) => !catalog.knowsAddon(a));
       offerings.removeWhere((c) => !catalog.knowsOffering(c));
     }
+
+    final visibleSubs = catalog == null
+        ? payload.subscriptions
+        : payload.subscriptions
+            .where((s) => s.isAllowedByCatalog(catalog))
+            .toList(growable: false);
 
     return LicenseEntitlements._(
       payload: payload,
@@ -131,6 +144,7 @@ class LicenseEntitlements {
       ),
       addons: Set.unmodifiable(addons),
       offeringCodes: Set.unmodifiable(offerings),
+      subscriptions: List.unmodifiable(visibleSubs),
     );
   }
 
@@ -138,7 +152,7 @@ class LicenseEntitlements {
   Set<String> get productIds => byProduct.keys.toSet();
 
   bool get hasAnyActiveSubscription =>
-      payload.activeSubscriptions.any((s) => !s.isPeriodEnded);
+      subscriptions.any((s) => s.isActive && !s.isPeriodEnded);
 
   bool hasOffering(String offeringCode) =>
       offeringCodes.contains(offeringCode.trim());
@@ -150,8 +164,8 @@ class LicenseEntitlements {
 
   bool hasProduct(String productId) => byProduct.containsKey(productId);
 
-  bool hasPlan(String planId) => payload.activeSubscriptions
-      .any((s) => s.planId == planId && !s.isPeriodEnded);
+  bool hasPlan(String planId) =>
+      subscriptions.any((s) => s.isActive && s.planId == planId && !s.isPeriodEnded);
 
   /// Quantity of [resourceKey] for one product (0 when absent).
   int resourceForProduct(
@@ -184,8 +198,8 @@ class LicenseEntitlements {
 
   DateTime? earliestExpiry() {
     DateTime? soonest;
-    for (final s in payload.activeSubscriptions) {
-      if (s.isPeriodEnded) continue;
+    for (final s in subscriptions) {
+      if (!s.isActive || s.isPeriodEnded) continue;
       if (soonest == null || s.validUntil.isBefore(soonest)) {
         soonest = s.validUntil;
       }
@@ -196,11 +210,15 @@ class LicenseEntitlements {
   DateTime? expiryForProduct(String productId) {
     final id = productId.trim();
     DateTime? soonest;
-    for (final s in payload.activeSubscriptions) {
-      if (s.isPeriodEnded) continue;
+    for (final s in subscriptions) {
+      if (!s.isActive || s.isPeriodEnded) continue;
       final hit = s.productId == id ||
+          s.productName == id ||
           s.offerings.any(
-            (o) => o.productId == id || o.productCode == id,
+            (o) =>
+                o.productId == id ||
+                o.productCode == id ||
+                o.productName == id,
           );
       if (!hit) continue;
       if (soonest == null || s.validUntil.isBefore(soonest)) {
@@ -213,8 +231,8 @@ class LicenseEntitlements {
   DateTime? expiryForAddon(String addonCode) {
     final needle = addonCode.trim().toLowerCase();
     DateTime? soonest;
-    for (final s in payload.activeSubscriptions) {
-      if (s.isPeriodEnded) continue;
+    for (final s in subscriptions) {
+      if (!s.isActive || s.isPeriodEnded) continue;
       if (!s.matchesAddonRef(needle)) continue;
       if (soonest == null || s.validUntil.isBefore(soonest)) {
         soonest = s.validUntil;
@@ -226,8 +244,8 @@ class LicenseEntitlements {
   DateTime? expiryForOffering(String offeringCode) {
     final code = offeringCode.trim();
     DateTime? soonest;
-    for (final s in payload.activeSubscriptions) {
-      if (s.isPeriodEnded) continue;
+    for (final s in subscriptions) {
+      if (!s.isActive || s.isPeriodEnded) continue;
       if (!s.offerings.any((o) => o.offeringCode == code)) continue;
       if (soonest == null || s.validUntil.isBefore(soonest)) {
         soonest = s.validUntil;
@@ -246,4 +264,51 @@ class LicenseEntitlements {
     }
     return !sawBound;
   }
+}
+
+List<String> _subscriptionProductAliases(BillingSubscription sub) {
+  final aliases = <String>[];
+  void push(String? value) {
+    final n = value?.trim() ?? '';
+    if (n.isNotEmpty && !aliases.contains(n)) aliases.add(n);
+  }
+
+  push(sub.productId);
+  push(sub.productName);
+  for (final offering in sub.offerings) {
+    push(offering.productId);
+    push(offering.productCode);
+    push(offering.productName);
+  }
+  return aliases;
+}
+
+/// Keep catalog-known keys only. Remap JWT serial `product_id` onto `product_name`
+/// when the baked catalog lists names. Do not duplicate buckets (resourceInt).
+Map<String, Map<String, int>> _applyCatalogToByProduct(
+  Map<String, Map<String, int>> byProduct,
+  BillingTokenPayload payload,
+  OfferingCatalog catalog,
+) {
+  final next = <String, Map<String, int>>{};
+  byProduct.forEach((key, bucket) {
+    if (catalog.knowsProduct(key)) next[key] = bucket;
+  });
+  for (final sub in payload.subscriptions) {
+    final aliases = _subscriptionProductAliases(sub);
+    String? sourceKey;
+    for (final alias in aliases) {
+      if (byProduct.containsKey(alias)) {
+        sourceKey = alias;
+        break;
+      }
+    }
+    if (sourceKey == null) continue;
+    final bucket = byProduct[sourceKey]!;
+    for (final alias in aliases) {
+      if (!catalog.knowsProduct(alias)) continue;
+      next.putIfAbsent(alias, () => bucket);
+    }
+  }
+  return next;
 }

@@ -281,6 +281,11 @@ export type LicenseEntitlementsView = {
   addonCodes: string[];
   /** Active offering codes (no prices). Parity with Dart `LicenseEntitlements.offeringCodes`. */
   offeringCodes: string[];
+  /**
+   * Seats this host may show (`catalog ∩ JWT`). When no catalog is configured,
+   * this is the raw JWT list. Device bind still uses `payload.subscriptions`.
+   */
+  subscriptions: BillingSubscription[];
   hasAddon: (code: string) => boolean;
   hasOffering: (code: string) => boolean;
   hasProduct: (productId: string) => boolean;
@@ -303,13 +308,98 @@ export function licenseListsSki(payload: LicensePayload | null | undefined, ski:
   return false;
 }
 
+/** Addon / offering codes on a seat (JWT may list codes this host does not gate). */
+export function subscriptionFeatureCodes(sub: BillingSubscription): string[] {
+  const codes: string[] = [];
+  const push = (value: string | undefined) => {
+    const n = value?.trim();
+    if (n && !codes.includes(n)) codes.push(n);
+  };
+  push(sub.addonCode);
+  for (const offering of sub.offerings) {
+    push(offering.offeringCode);
+    const addon = offering.resources.addon_code ?? offering.resources.addonCode;
+    if (typeof addon === "string") push(addon);
+  }
+  return codes;
+}
+
+/**
+ * Fail-closed host slice: a seat is visible only when at least one of its
+ * feature codes is in this binary’s catalog. JWT-only codes (linux in Office,
+ * pgp in Email) stay off. Product-name match is not enough — linux seats are
+ * still product `Scomm`.
+ */
+export function catalogAllowsSubscription(
+  catalog: OfferingCatalog,
+  sub: BillingSubscription,
+): boolean {
+  const codes = subscriptionFeatureCodes(sub);
+  if (codes.length === 0) {
+    return (
+      catalogKnowsProduct(catalog, sub.productId) ||
+      catalogKnowsProduct(catalog, sub.productName)
+    );
+  }
+  return codes.some(
+    (code) => catalogKnowsAddon(catalog, code) || catalogKnowsOffering(catalog, code),
+  );
+}
+
+function subscriptionProductAliases(sub: BillingSubscription): string[] {
+  const aliases: string[] = [];
+  const push = (value: string | undefined) => {
+    const n = value?.trim();
+    if (n && !aliases.includes(n)) aliases.push(n);
+  };
+  push(sub.productId);
+  push(sub.productName);
+  for (const offering of sub.offerings) {
+    push(offering.productId);
+    push(offering.productCode);
+    push(offering.productName);
+  }
+  return aliases;
+}
+
+/**
+ * Keep catalog-known product keys only. Remap JWT serial `product_id` buckets
+ * onto `product_name` when the baked catalog lists names (hosts.json).
+ * Never duplicate the same bucket under two keys — `resourceInt` would double.
+ */
+function applyCatalogToByProduct(
+  byProduct: Record<string, Record<string, number>>,
+  payload: LicensePayload,
+  catalog: OfferingCatalog,
+): Record<string, Record<string, number>> {
+  const next: Record<string, Record<string, number>> = {};
+
+  for (const [key, bucket] of Object.entries(byProduct)) {
+    if (catalogKnowsProduct(catalog, key)) next[key] = bucket;
+  }
+
+  for (const sub of payload.subscriptions) {
+    const aliases = subscriptionProductAliases(sub);
+    const sourceKey = aliases.find((alias) => byProduct[alias] != null);
+    if (sourceKey == null) continue;
+    const bucket = byProduct[sourceKey];
+    if (bucket == null) continue;
+    for (const alias of aliases) {
+      if (!catalogKnowsProduct(catalog, alias)) continue;
+      if (next[alias] == null) next[alias] = bucket;
+    }
+  }
+
+  return next;
+}
+
 /** Feature-gate helpers: Product → Resources → Quantity (no monetary fields). */
 export function licenseEntitlements(
   payload: LicensePayload,
   nowUnix: number = Math.floor(Date.now() / 1000),
   catalog?: OfferingCatalog,
 ): LicenseEntitlementsView {
-  const byProduct: Record<string, Record<string, number>> = {};
+  let byProduct: Record<string, Record<string, number>> = {};
   const addons = new Set<string>();
   const offerings = new Set<string>();
 
@@ -384,9 +474,7 @@ export function licenseEntitlements(
   }
 
   if (catalog) {
-    for (const key of Object.keys(byProduct)) {
-      if (!catalogKnowsProduct(catalog, key)) delete byProduct[key];
-    }
+    byProduct = applyCatalogToByProduct(byProduct, payload, catalog);
     for (const a of [...addons]) {
       if (!catalogKnowsAddon(catalog, a)) addons.delete(a);
     }
@@ -408,11 +496,16 @@ export function licenseEntitlements(
     return found ? total : defaultValue;
   };
 
+  const hostSubscriptions = catalog
+    ? payload.subscriptions.filter((sub) => catalogAllowsSubscription(catalog, sub))
+    : payload.subscriptions;
+
   return {
     byProduct,
     maxDevices: resourceInt("max_devices"),
     addonCodes: [...addons].sort(),
     offeringCodes: [...offerings].sort(),
+    subscriptions: hostSubscriptions,
     hasAddon: (code) => {
       const needle = code.trim().toLowerCase();
       for (const a of addons) if (a.toLowerCase() === needle) return true;
@@ -427,7 +520,7 @@ export function licenseEntitlements(
       byProduct[productId]?.max_devices ?? defaultValue,
     earliestExpiryUnix: () => {
       let soonest: number | undefined;
-      for (const s of payload.subscriptions) {
+      for (const s of hostSubscriptions) {
         if (!isSubscriptionActive(s.subscriptionStatus) || s.validUntilUnix <= nowUnix) continue;
         if (soonest === undefined || s.validUntilUnix < soonest) soonest = s.validUntilUnix;
       }

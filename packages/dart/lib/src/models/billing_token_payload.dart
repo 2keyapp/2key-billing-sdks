@@ -88,6 +88,10 @@ class BillingTokenPayload {
   LicenseEntitlements entitlementsAgainst(OfferingCatalog? catalog) =>
       LicenseEntitlements.fromPayload(this, catalog: catalog);
 
+  /// Seats this host may show. [payload.subscriptions] stays the raw JWT.
+  List<BillingSubscription> hostSubscriptions(OfferingCatalog? catalog) =>
+      entitlementsAgainst(catalog).subscriptions;
+
   /// Convenience alias for [payingParty] (e.g. when migrating from mailbox-based payloads).
   PayingParty? get firstPayingParty => payingParty;
 

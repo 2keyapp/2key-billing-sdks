@@ -26,24 +26,28 @@ import { createAdminClient, createMachineAuthnClient } from "@2key/browser-sdk/d
 ```
 
 ```ts
+import { catalogForHost, createBillingClient } from "@2key/browser-sdk";
+import hosts from "./hosts.json";
+
 const billing = createBillingClient({
   apiBaseUrl: "https://billing.example.com",
   publicKeyPem,
   storagePrefix: "my-app",
-  catalog: {
-    productIds: ["prod_mail"],
-    offeringCodes: ["ai_assistant"],
-    addonCodes: ["ai_assistant"],
-  },
+  catalog: catalogForHost(hosts, "office"),
 });
 
 await billing.ensureDeviceId({ friendlyName: "Office WebView" });
 await billing.restore();
 await billing.syncLicense({ accessToken });
-if (!billing.hasProduct("prod_mail")) {
+if (!billing.hasProduct("Scomm")) {
   /* locked */
 }
+const seats = billing.hostSubscriptions();
 ```
+
+Bake `hosts.json` from the catalog seed repo at build time. `catalogForHost` picks this binary’s slice (`office`, `scommDesktop`, `scommLinux`). Product identity is the catalog name, not a Postgres serial id.
+
+Gates and seat lists use `billing.entitlements()` / `hostSubscriptions()` (`catalog ∩ JWT`). Do not iterate `restore()` / `payload.subscriptions` for UI — that list is the full identity JWT (linux stays off in Office; pgp stays off in Email). Device bind still uses the raw JWT.
 
 ## Pillars
 
