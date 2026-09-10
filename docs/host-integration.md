@@ -102,7 +102,7 @@ import {
   portalHandoffUrl,
   shopUrl,
   authorize,
-} from "@2key/browser-sdk";
+} from '@2key/browser-sdk';
 ```
 
 Typical **paying-party portal** flow:
@@ -129,23 +129,22 @@ See [office-add-in-embed.md](office-add-in-embed.md).
 Production add-in origin: `https://office.scomm.ai`.
 
 ```ts
-import {
-  createBillingClient,
-  catalogForHost,
-} from "@2key/browser-sdk";
-import hosts from "./hosts.json";
+import {createBillingClient, catalogForHost} from '@2key/browser-sdk';
+import hosts from './hosts.json';
 
-const catalog = catalogForHost(hosts, "office");
+const catalog = catalogForHost(hosts, 'office');
 const billing = createBillingClient({
   apiBaseUrl,
   publicKeyPem,
-  storagePrefix: "scomm-office",
+  storagePrefix: 'scomm-office',
   catalog,
 });
-const pasteJson = await billing.exportDevicePaste({ friendlyName: "Outlook" });
+const pasteJson = await billing.exportDevicePaste({friendlyName: 'Outlook'});
 await billing.restore();
 await billing.pasteLicense(snapshotFromPortal);
-if (!billing.hasProduct("Scomm")) { /* locked */ }
+if (!billing.hasProduct('Scomm')) {
+  /* locked */
+}
 const seats = billing.hostSubscriptions(); // catalog ∩ JWT — not restore().subscriptions
 ```
 
@@ -162,12 +161,12 @@ Pins and checksums: `core-binaries.lock.json`. Source stays in private `2key-cor
 
 ## Forbidden
 
-| Dependency | Why |
-|------------|-----|
-| `package:better_auth` in host apps | Auth client is internal to `two_key_dart_sdk` |
+| Dependency                                                 | Why                                              |
+| ---------------------------------------------------------- | ------------------------------------------------ |
+| `package:better_auth` in host apps                         | Auth client is internal to `two_key_dart_sdk`    |
 | `@better-auth/*` / `@2key/auth-native` in SPA product code | Server plugin / fork — not a browser product SDK |
-| `cargo` path dep on `two-key-core` | Binary Private Core — fetch release libs only |
-| `@2key/billing-core` | Private server package |
+| `cargo` path dep on `two-key-core`                         | Binary Private Core — fetch release libs only    |
+| `@2key/billing-core`                                       | Private server package                           |
 
 ## After Phase 5 push (better-auth)
 
