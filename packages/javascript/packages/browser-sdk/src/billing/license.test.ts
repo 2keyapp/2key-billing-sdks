@@ -191,3 +191,107 @@ test("catalog productNames remap serial JWT product_id without double-counting",
   assert.equal(gated.resourceForProduct("Scomm", "max_devices"), 5);
   assert.equal(gated.resourceInt("max_devices"), 5);
 });
+
+test("bundle plan GROUP BY product SUM resources; normalized JSON has no prices", () => {
+  const payload = parseLicenseClaims({
+    payload_version: 3,
+    exp: 4102444800,
+    paying_party: {
+      id: "pp1",
+      identity_provider: "google",
+      identity_subject: "sub",
+      billing_email: "a@b.com",
+    },
+    subscriptions: [
+      {
+        subscription_id: "s1",
+        plan_id: "plan_bundle",
+        plan_name: "All Add-ons Bundle",
+        product_id: "1",
+        product_name: "Scomm",
+        subscription_status: "active",
+        valid_until: 4102444800,
+        quantity: 1,
+        offerings: [
+          {
+            offering_id: "o1",
+            offering_code: "pgp",
+            product_id: "1",
+            product_name: "Scomm",
+            units: 1,
+            resources: { addon_code: "pgp", mailboxes: 10 },
+          },
+          {
+            offering_id: "o2",
+            offering_code: "linux",
+            product_id: "1",
+            product_name: "Scomm",
+            units: 1,
+            resources: { addon_code: "linux", mailboxes: 5 },
+          },
+        ],
+      },
+    ],
+  });
+  const e = licenseEntitlements(payload, 1_700_000_000);
+  assert.equal(e.resourceForProduct("Scomm", "mailboxes"), 15);
+  assert.equal(e.hasAddon("pgp"), true);
+  assert.equal(e.hasAddon("linux"), true);
+  const snap = e.normalizedJson();
+  assert.deepEqual(snap, {
+    products: {
+      Scomm: {
+        pgp: { count: 1, mailboxes: 10 },
+        linux: { count: 1, mailboxes: 5 },
+      },
+    },
+  });
+  assert.equal(JSON.stringify(snap).includes("price"), false);
+  assert.equal(JSON.stringify(snap).includes("plan_name"), false);
+});
+
+test("COUNT(*) per feature; extra resources stay on that feature", () => {
+  const payload = parseLicenseClaims({
+    payload_version: 3,
+    exp: 4102444800,
+    paying_party: {
+      id: "pp1",
+      identity_provider: "google",
+      identity_subject: "sub",
+      billing_email: "a@b.com",
+    },
+    subscriptions: [
+      {
+        subscription_id: "s1",
+        plan_id: "plan_x",
+        plan_name: "X",
+        product_id: "1",
+        product_name: "Scomm",
+        subscription_status: "active",
+        valid_until: 4102444800,
+        quantity: 2,
+        offerings: [
+          {
+            offering_id: "o-pgp",
+            offering_code: "pgp",
+            product_id: "1",
+            product_name: "Scomm",
+            units: 1,
+            resources: { addon_code: "pgp" },
+          },
+          {
+            offering_id: "o-spam",
+            offering_code: "spam_filter",
+            product_id: "1",
+            product_name: "Scomm",
+            units: 1,
+            resources: { addon_code: "spam_filter", mailbox: 5 },
+          },
+        ],
+      },
+    ],
+  });
+  const snap = licenseEntitlements(payload, 1_700_000_000).normalizedJson();
+  assert.deepEqual(snap.products.Scomm.pgp, { count: 2 });
+  assert.deepEqual(snap.products.Scomm.spam_filter, { count: 2, mailbox: 10 });
+});

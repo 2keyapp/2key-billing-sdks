@@ -3,14 +3,16 @@ import 'billing_subscription.dart';
 import 'billing_token_payload.dart';
 import 'jwt_payload_keys.dart';
 
-/// Using-party feature gates: **Product → Resources → Quantity**.
+/// Using-party feature gates: **Product → Feature → `{ count, …resources }`**.
 ///
-/// Quantities for the same product are summed across offerings/plans.
-/// Prefer server `entitlements.by_product` when `payload_version >= 3`.
-/// Never exposes prices.
+/// Default GROUP BY is COUNT(*) of granted offering units (`quantity × units`)
+/// as `count` per addon/offering code. Other numeric resources are SUM'd on
+/// that same feature. Prefer server `entitlements.products` when present.
+/// Never exposes prices. Apps should query [toNormalizedJson] on start.
 class LicenseEntitlements {
   const LicenseEntitlements._({
     required this.payload,
+    required this.products,
     required this.byProduct,
     required this.addons,
     required this.offeringCodes,
@@ -19,7 +21,10 @@ class LicenseEntitlements {
 
   final BillingTokenPayload payload;
 
-  /// productId (or product_code) → resourceKey → summed quantity.
+  /// product → feature (addon/offering) → `{ count, mailbox, … }`.
+  final Map<String, Map<String, Map<String, int>>> products;
+
+  /// productId → resourceKey → summed quantity (no `count`).
   final Map<String, Map<String, int>> byProduct;
   final Set<String> addons;
   final Set<String> offeringCodes;
@@ -38,19 +43,64 @@ class LicenseEntitlements {
     BillingTokenPayload payload, {
     OfferingCatalog? catalog,
   }) {
+    var products = <String, Map<String, Map<String, int>>>{};
     var byProduct = <String, Map<String, int>>{};
     final addons = <String>{};
     final offerings = <String>{};
 
     void addResource(String productKey, String resourceKey, int amount) {
       if (productKey.isEmpty || amount <= 0) return;
+      if (_nonResourceKeys.contains(resourceKey) || resourceKey == 'count') {
+        return;
+      }
       final bucket = byProduct.putIfAbsent(productKey, () => <String, int>{});
+      bucket[resourceKey] = (bucket[resourceKey] ?? 0) + amount;
+    }
+
+    void addFeature(
+      String productKey,
+      String featureKey,
+      String resourceKey,
+      int amount,
+    ) {
+      if (productKey.isEmpty || featureKey.isEmpty || amount <= 0) return;
+      if (resourceKey != 'count' && _nonResourceKeys.contains(resourceKey)) {
+        return;
+      }
+      final features =
+          products.putIfAbsent(productKey, () => <String, Map<String, int>>{});
+      final bucket = features.putIfAbsent(featureKey, () => <String, int>{});
       bucket[resourceKey] = (bucket[resourceKey] ?? 0) + amount;
     }
 
     final server = payload.entitlementsJson;
     var usedServerByProduct = false;
+    var usedServerProducts = false;
     if (server != null && payload.payloadVersion >= 3) {
+      final rawProducts = server['products'];
+      if (rawProducts is Map) {
+        rawProducts.forEach((productKey, features) {
+          if (productKey is! String || productKey.isEmpty) return;
+          if (features is! Map) return;
+          var nested = false;
+          features.forEach((_, bucket) {
+            if (bucket is Map) nested = true;
+          });
+          if (!nested) return;
+          usedServerProducts = true;
+          features.forEach((featureKey, bucket) {
+            if (featureKey is! String || featureKey.isEmpty) return;
+            if (bucket is! Map) return;
+            bucket.forEach((resourceKey, value) {
+              if (resourceKey is! String) return;
+              final n = parseInt(value);
+              if (n != null && n > 0) {
+                addFeature(productKey, featureKey, resourceKey, n);
+              }
+            });
+          });
+        });
+      }
       final rawByProduct = server['by_product'] ?? server['byProduct'];
       if (rawByProduct is Map) {
         usedServerByProduct = true;
@@ -96,35 +146,54 @@ class LicenseEntitlements {
         if (a != null) addons.add(a);
       }
 
-      if (usedServerByProduct) continue;
+      if (usedServerByProduct && usedServerProducts) continue;
 
       final q = s.quantity < 1 ? 1 : s.quantity;
       if (s.offerings.isNotEmpty) {
         for (final o in s.offerings) {
           final units = o.units < 1 ? 1 : o.units;
-          final keys = <String>{
-            if (o.productId.isNotEmpty) o.productId,
-            if (o.productCode != null && o.productCode!.isNotEmpty)
-              o.productCode!,
-          };
+          final multiplier = units * q;
+          final productKey = _productGroupKey(o);
+          final featureKey = _featureGroupKey(o);
+          if (!usedServerProducts) {
+            addFeature(productKey, featureKey, 'count', multiplier);
+          }
           o.resources.forEach((key, value) {
             final n = parseInt(value);
-            if (n != null && n > 0) {
-              for (final productKey in keys) {
-                addResource(productKey, key, n * units * q);
+            if (n != null && n > 0 && productKey.isNotEmpty) {
+              if (!usedServerByProduct) {
+                addResource(productKey, key, n * multiplier);
+              }
+              if (!usedServerProducts) {
+                addFeature(productKey, featureKey, key, n * multiplier);
               }
             }
           });
         }
-      } else if (s.maxDevices != null &&
-          s.maxDevices! > 0 &&
-          s.productId.isNotEmpty) {
-        addResource(s.productId, 'max_devices', s.maxDevices! * q);
+      } else if (s.productName.isNotEmpty || s.productId.isNotEmpty) {
+        final productKey =
+            s.productName.isNotEmpty ? s.productName : s.productId;
+        final featureKey =
+            (s.addonCode != null && s.addonCode!.isNotEmpty)
+                ? s.addonCode!
+                : productKey;
+        if (!usedServerProducts) {
+          addFeature(productKey, featureKey, 'count', q);
+        }
+        if (s.maxDevices != null && s.maxDevices! > 0) {
+          if (!usedServerByProduct) {
+            addResource(productKey, 'max_devices', s.maxDevices! * q);
+          }
+          if (!usedServerProducts) {
+            addFeature(productKey, featureKey, 'max_devices', s.maxDevices! * q);
+          }
+        }
       }
     }
 
     if (catalog != null) {
       byProduct = _applyCatalogToByProduct(byProduct, payload, catalog);
+      products = _applyCatalogToProducts(products, payload, catalog);
       addons.removeWhere((a) => !catalog.knowsAddon(a));
       offerings.removeWhere((c) => !catalog.knowsOffering(c));
     }
@@ -137,6 +206,21 @@ class LicenseEntitlements {
 
     return LicenseEntitlements._(
       payload: payload,
+      products: Map<String, Map<String, Map<String, int>>>.unmodifiable(
+        products.map(
+          (k, features) => MapEntry(
+            k,
+            Map<String, Map<String, int>>.unmodifiable(
+              features.map(
+                (fk, bucket) => MapEntry(
+                  fk,
+                  Map<String, int>.unmodifiable(bucket),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
       byProduct: Map.unmodifiable(
         byProduct.map(
           (k, v) => MapEntry(k, Map<String, int>.unmodifiable(v)),
@@ -148,8 +232,19 @@ class LicenseEntitlements {
     );
   }
 
-  /// All product ids/codes present in [byProduct].
-  Set<String> get productIds => byProduct.keys.toSet();
+  /// Product → feature → `{ count, …resources }`. No prices, no plan rows.
+  Map<String, Object?> toNormalizedJson() => {
+        'products': {
+          for (final product in products.entries)
+            product.key: {
+              for (final feature in product.value.entries)
+                feature.key: Map<String, int>.from(feature.value),
+            },
+        },
+      };
+
+  /// Product keys present in the gate JSON or the flat SUM map.
+  Set<String> get productIds => {...products.keys, ...byProduct.keys};
 
   bool get hasAnyActiveSubscription =>
       subscriptions.any((s) => s.isActive && !s.isPeriodEnded);
@@ -162,7 +257,8 @@ class LicenseEntitlements {
     return addons.any((a) => a.toLowerCase() == needle);
   }
 
-  bool hasProduct(String productId) => byProduct.containsKey(productId);
+  bool hasProduct(String productId) =>
+      products.containsKey(productId) || byProduct.containsKey(productId);
 
   bool hasPlan(String planId) =>
       subscriptions.any((s) => s.isActive && s.planId == planId && !s.isPeriodEnded);
@@ -266,6 +362,30 @@ class LicenseEntitlements {
   }
 }
 
+const _nonResourceKeys = {
+  'addon_code',
+  'addonCode',
+  'surfaces',
+  'platforms',
+  'usage_grants',
+  'usageGrants',
+};
+
+/// Catalog product name, then code, then serial id — one key so SUM does not double-count.
+String _productGroupKey(LicenseOfferingClaim offering) {
+  final name = offering.productName?.trim();
+  if (name != null && name.isNotEmpty) return name;
+  final code = offering.productCode?.trim();
+  if (code != null && code.isNotEmpty) return code;
+  return offering.productId.trim();
+}
+
+String _featureGroupKey(LicenseOfferingClaim offering) {
+  final addon = offering.addonCode?.trim();
+  if (addon != null && addon.isNotEmpty) return addon;
+  return offering.offeringCode.trim();
+}
+
 List<String> _subscriptionProductAliases(BillingSubscription sub) {
   final aliases = <String>[];
   void push(String? value) {
@@ -308,6 +428,50 @@ Map<String, Map<String, int>> _applyCatalogToByProduct(
     for (final alias in aliases) {
       if (!catalog.knowsProduct(alias)) continue;
       next.putIfAbsent(alias, () => bucket);
+    }
+  }
+  return next;
+}
+
+Map<String, Map<String, Map<String, int>>> _applyCatalogToProducts(
+  Map<String, Map<String, Map<String, int>>> products,
+  BillingTokenPayload payload,
+  OfferingCatalog catalog,
+) {
+  bool knowsFeature(String code) =>
+      catalog.knowsAddon(code) || catalog.knowsOffering(code);
+
+  Map<String, Map<String, int>> filterFeatures(
+    Map<String, Map<String, int>> features,
+  ) {
+    final next = <String, Map<String, int>>{};
+    features.forEach((code, bucket) {
+      if (knowsFeature(code)) next[code] = bucket;
+    });
+    return next;
+  }
+
+  final next = <String, Map<String, Map<String, int>>>{};
+  products.forEach((key, features) {
+    if (!catalog.knowsProduct(key)) return;
+    final filtered = filterFeatures(features);
+    if (filtered.isNotEmpty) next[key] = filtered;
+  });
+  for (final sub in payload.subscriptions) {
+    final aliases = _subscriptionProductAliases(sub);
+    String? sourceKey;
+    for (final alias in aliases) {
+      if (products.containsKey(alias)) {
+        sourceKey = alias;
+        break;
+      }
+    }
+    if (sourceKey == null) continue;
+    final filtered = filterFeatures(products[sourceKey]!);
+    if (filtered.isEmpty) continue;
+    for (final alias in aliases) {
+      if (!catalog.knowsProduct(alias)) continue;
+      next.putIfAbsent(alias, () => filtered);
     }
   }
   return next;

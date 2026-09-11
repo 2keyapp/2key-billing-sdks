@@ -48,6 +48,32 @@ export type LicenseOfferingClaim = {
   resources: Record<string, unknown>;
 };
 
+/** Catalog product name, then code, then serial id — one key so SUM does not double-count. */
+function productGroupKey(offering: LicenseOfferingClaim): string {
+  const name = offering.productName?.trim();
+  if (name) return name;
+  const code = offering.productCode?.trim();
+  if (code) return code;
+  return offering.productId.trim();
+}
+
+const NON_RESOURCE_KEYS = new Set([
+  "addon_code",
+  "addonCode",
+  "surfaces",
+  "platforms",
+  "usage_grants",
+  "usageGrants",
+]);
+
+function featureGroupKey(offering: LicenseOfferingClaim): string {
+  const addon = offering.resources.addon_code ?? offering.resources.addonCode;
+  if (typeof addon === "string" && addon.trim() !== "") return addon.trim();
+  return offering.offeringCode.trim();
+}
+
+export type NormalizedProducts = Record<string, Record<string, Record<string, number>>>;
+
 export type BillingSubscription = {
   subscriptionId: string;
   planId: string;
@@ -274,7 +300,7 @@ export function isSubscriptionActive(status: string): boolean {
 }
 
 export type LicenseEntitlementsView = {
-  /** productId → resourceKey → summed quantity */
+  /** product name → resourceKey → summed quantity */
   byProduct: Record<string, Record<string, number>>;
   maxDevices: number;
   /** Active add-on codes (no prices). Parity with Dart `LicenseEntitlements.addons`. */
@@ -286,6 +312,11 @@ export type LicenseEntitlementsView = {
    * this is the raw JWT list. Device bind still uses `payload.subscriptions`.
    */
   subscriptions: BillingSubscription[];
+  /**
+   * Product → feature → `{ count, …resources }`. No prices, no plan rows.
+   * Apps should query this on start. `count` is COUNT(*) of granted units.
+   */
+  normalizedJson: () => { products: NormalizedProducts };
   hasAddon: (code: string) => boolean;
   hasOffering: (code: string) => boolean;
   hasProduct: (productId: string) => boolean;
@@ -393,26 +424,101 @@ function applyCatalogToByProduct(
   return next;
 }
 
-/** Feature-gate helpers: Product → Resources → Quantity (no monetary fields). */
+function applyCatalogToProducts(
+  products: NormalizedProducts,
+  payload: LicensePayload,
+  catalog: OfferingCatalog,
+): NormalizedProducts {
+  const knowsFeature = (code: string) =>
+    catalogKnowsAddon(catalog, code) || catalogKnowsOffering(catalog, code);
+
+  const filterFeatures = (features: Record<string, Record<string, number>>) => {
+    const next: Record<string, Record<string, number>> = {};
+    for (const [code, bucket] of Object.entries(features)) {
+      if (knowsFeature(code)) next[code] = bucket;
+    }
+    return next;
+  };
+
+  const next: NormalizedProducts = {};
+  for (const [key, features] of Object.entries(products)) {
+    if (!catalogKnowsProduct(catalog, key)) continue;
+    const filtered = filterFeatures(features);
+    if (Object.keys(filtered).length > 0) next[key] = filtered;
+  }
+  for (const sub of payload.subscriptions) {
+    const aliases = subscriptionProductAliases(sub);
+    const sourceKey = aliases.find((alias) => products[alias] != null);
+    if (sourceKey == null) continue;
+    const filtered = filterFeatures(products[sourceKey] ?? {});
+    if (Object.keys(filtered).length === 0) continue;
+    for (const alias of aliases) {
+      if (!catalogKnowsProduct(catalog, alias)) continue;
+      if (next[alias] == null) next[alias] = filtered;
+    }
+  }
+  return next;
+}
+
+/** Feature-gate helpers: Product → Feature → `{ count, …resources }` (no money). */
 export function licenseEntitlements(
   payload: LicensePayload,
   nowUnix: number = Math.floor(Date.now() / 1000),
   catalog?: OfferingCatalog,
 ): LicenseEntitlementsView {
+  let products: NormalizedProducts = {};
   let byProduct: Record<string, Record<string, number>> = {};
   const addons = new Set<string>();
   const offerings = new Set<string>();
 
   const addResource = (productKey: string, resourceKey: string, amount: number) => {
     if (!productKey || amount <= 0) return;
+    if (NON_RESOURCE_KEYS.has(resourceKey) || resourceKey === "count") return;
     const bucket = byProduct[productKey] ?? {};
     bucket[resourceKey] = (bucket[resourceKey] ?? 0) + amount;
     byProduct[productKey] = bucket;
   };
 
+  const addFeature = (
+    productKey: string,
+    featureKey: string,
+    resourceKey: string,
+    amount: number,
+  ) => {
+    if (!productKey || !featureKey || amount <= 0) return;
+    if (resourceKey !== "count" && NON_RESOURCE_KEYS.has(resourceKey)) return;
+    const features = products[productKey] ?? {};
+    const bucket = features[featureKey] ?? {};
+    bucket[resourceKey] = (bucket[resourceKey] ?? 0) + amount;
+    features[featureKey] = bucket;
+    products[productKey] = features;
+  };
+
   const server = payload.entitlementsJson;
   let usedServerByProduct = false;
+  let usedServerProducts = false;
   if (server && payload.payloadVersion >= 3) {
+    const rawProducts = server.products;
+    if (rawProducts && typeof rawProducts === "object" && !Array.isArray(rawProducts)) {
+      for (const [productKey, features] of Object.entries(
+        rawProducts as Record<string, unknown>,
+      )) {
+        if (!features || typeof features !== "object" || Array.isArray(features)) continue;
+        const featureEntries = Object.entries(features as Record<string, unknown>);
+        const nested = featureEntries.some(
+          ([, bucket]) => bucket && typeof bucket === "object" && !Array.isArray(bucket),
+        );
+        if (!nested) continue;
+        usedServerProducts = true;
+        for (const [featureKey, bucket] of featureEntries) {
+          if (!bucket || typeof bucket !== "object" || Array.isArray(bucket)) continue;
+          for (const [resourceKey, value] of Object.entries(bucket as Record<string, unknown>)) {
+            const n = asInt(value);
+            if (n !== undefined && n > 0) addFeature(productKey, featureKey, resourceKey, n);
+          }
+        }
+      }
+    }
     const rawByProduct = server.by_product ?? server.byProduct;
     if (rawByProduct && typeof rawByProduct === "object" && !Array.isArray(rawByProduct)) {
       usedServerByProduct = true;
@@ -450,31 +556,40 @@ export function licenseEntitlements(
       const a = o.resources.addon_code ?? o.resources.addonCode;
       if (typeof a === "string" && a) addons.add(a);
     }
-    if (usedServerByProduct) continue;
 
     const q = Math.max(1, s.quantity || 1);
     if (s.offerings.length > 0) {
       for (const o of s.offerings) {
         const units = Math.max(1, o.units || 1);
-        const keys = [o.productId, o.productCode].filter(
-          (k): k is string => typeof k === "string" && k.length > 0,
-        );
+        const multiplier = units * q;
+        const productKey = productGroupKey(o);
+        const feat = featureGroupKey(o);
+        if (!productKey) continue;
+        if (!usedServerProducts) addFeature(productKey, feat, "count", multiplier);
         for (const [key, value] of Object.entries(o.resources)) {
           const n = asInt(value);
           if (n !== undefined && n > 0) {
-            for (const productKey of keys) {
-              addResource(productKey, key, n * units * q);
-            }
+            if (!usedServerByProduct) addResource(productKey, key, n * multiplier);
+            if (!usedServerProducts) addFeature(productKey, feat, key, n * multiplier);
           }
         }
       }
-    } else if (s.maxDevices && s.maxDevices > 0 && s.productId) {
-      addResource(s.productId, "max_devices", s.maxDevices * q);
+    } else if (s.productName || s.productId) {
+      const productKey = s.productName || s.productId;
+      const feat = s.addonCode?.trim() || productKey;
+      if (!usedServerProducts) addFeature(productKey, feat, "count", q);
+      if (s.maxDevices && s.maxDevices > 0) {
+        if (!usedServerByProduct) addResource(productKey, "max_devices", s.maxDevices * q);
+        if (!usedServerProducts) {
+          addFeature(productKey, feat, "max_devices", s.maxDevices * q);
+        }
+      }
     }
   }
 
   if (catalog) {
     byProduct = applyCatalogToByProduct(byProduct, payload, catalog);
+    products = applyCatalogToProducts(products, payload, catalog);
     for (const a of [...addons]) {
       if (!catalogKnowsAddon(catalog, a)) addons.delete(a);
     }
@@ -506,13 +621,15 @@ export function licenseEntitlements(
     addonCodes: [...addons].sort(),
     offeringCodes: [...offerings].sort(),
     subscriptions: hostSubscriptions,
+    normalizedJson: () => ({ products }),
     hasAddon: (code) => {
       const needle = code.trim().toLowerCase();
       for (const a of addons) if (a.toLowerCase() === needle) return true;
       return false;
     },
     hasOffering: (code) => offerings.has(code.trim()),
-    hasProduct: (productId) => Object.hasOwn(byProduct, productId),
+    hasProduct: (productId) =>
+      Object.hasOwn(products, productId) || Object.hasOwn(byProduct, productId),
     resourceForProduct: (productId, resourceKey, defaultValue = 0) =>
       byProduct[productId]?.[resourceKey] ?? defaultValue,
     resourceInt,

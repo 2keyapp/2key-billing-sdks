@@ -18,7 +18,7 @@ File _fixture(String name) {
 }
 
 void main() {
-  group('LicenseEntitlements Product→Resources→Quantity', () {
+  group('LicenseEntitlements Product→Feature→count', () {
     test('exposes by_product summed quantities', () {
       final root =
           jsonDecode(_fixture('license_payload_v3.json').readAsStringSync())
@@ -218,6 +218,113 @@ void main() {
       final e = derived.entitlements;
       expect(e.resourceForProduct('prod_mail', 'max_devices'), 30);
       expect(e.resourceInt('max_devices'), 30);
+    });
+
+    test('bundle plan GROUP BY product SUM resources; normalized JSON has no prices', () {
+      final derived = BillingTokenPayload.fromJson({
+        'payload_version': 3,
+        'exp': 4102444800,
+        'paying_party': {
+          'id': 'pp1',
+          'identity_provider': 'google',
+          'identity_subject': 'sub',
+          'billing_email': 'a@b.com',
+        },
+        'subscriptions': [
+          {
+            'subscription_id': 's1',
+            'plan_id': 'plan_bundle',
+            'plan_name': 'All Add-ons Bundle',
+            'product_id': '1',
+            'product_name': 'Scomm',
+            'subscription_status': 'active',
+            'valid_until': 4102444800,
+            'quantity': 1,
+            'offerings': [
+              {
+                'offering_id': 'o1',
+                'offering_code': 'pgp',
+                'product_id': '1',
+                'product_name': 'Scomm',
+                'units': 1,
+                'resources': {'addon_code': 'pgp', 'mailboxes': 10},
+              },
+              {
+                'offering_id': 'o2',
+                'offering_code': 'linux',
+                'product_id': '1',
+                'product_name': 'Scomm',
+                'units': 1,
+                'resources': {'addon_code': 'linux', 'mailboxes': 5},
+              },
+            ],
+          },
+        ],
+      });
+      final e = derived.entitlements;
+      expect(e.resourceForProduct('Scomm', 'mailboxes'), 15);
+      expect(e.hasAddon('pgp'), isTrue);
+      expect(e.hasAddon('linux'), isTrue);
+      expect(e.hasProduct('Scomm'), isTrue);
+      final snap = e.toNormalizedJson();
+      expect(snap['products'], {
+        'Scomm': {
+          'pgp': {'count': 1, 'mailboxes': 10},
+          'linux': {'count': 1, 'mailboxes': 5},
+        },
+      });
+      expect(jsonEncode(snap), isNot(contains('price')));
+      expect(jsonEncode(snap), isNot(contains('plan_name')));
+    });
+
+    test('COUNT(*) per feature; extra resources stay on that feature', () {
+      final derived = BillingTokenPayload.fromJson({
+        'payload_version': 3,
+        'exp': 4102444800,
+        'paying_party': {
+          'id': 'pp1',
+          'identity_provider': 'google',
+          'identity_subject': 'sub',
+          'billing_email': 'a@b.com',
+        },
+        'subscriptions': [
+          {
+            'subscription_id': 's1',
+            'plan_id': 'plan_x',
+            'plan_name': 'X',
+            'product_id': '1',
+            'product_name': 'Scomm',
+            'subscription_status': 'active',
+            'valid_until': 4102444800,
+            'quantity': 2,
+            'offerings': [
+              {
+                'offering_id': 'o-pgp',
+                'offering_code': 'pgp',
+                'product_id': '1',
+                'product_name': 'Scomm',
+                'units': 1,
+                'resources': {'addon_code': 'pgp'},
+              },
+              {
+                'offering_id': 'o-spam',
+                'offering_code': 'spam_filter',
+                'product_id': '1',
+                'product_name': 'Scomm',
+                'units': 1,
+                'resources': {'addon_code': 'spam_filter', 'mailbox': 5},
+              },
+            ],
+          },
+        ],
+      });
+      final snap = derived.entitlements.toNormalizedJson();
+      expect(snap['products'], {
+        'Scomm': {
+          'pgp': {'count': 2},
+          'spam_filter': {'count': 2, 'mailbox': 10},
+        },
+      });
     });
   });
 }

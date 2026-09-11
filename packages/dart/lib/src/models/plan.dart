@@ -26,7 +26,7 @@ class Plan {
   final String? addonCode;
   final bool isActive;
 
-  /// Add-on code from plan metadata (e.g. `ai_assistant`).
+  /// Add-on code from plan metadata (`addonCode` on features JSON).
   String? get resolvedAddonCode {
     if (addonCode != null && addonCode!.isNotEmpty) return addonCode;
     final raw = featuresJson?['addonCode'];

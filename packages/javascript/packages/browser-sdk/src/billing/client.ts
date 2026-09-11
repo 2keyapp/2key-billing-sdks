@@ -209,6 +209,15 @@ export class BillingClient {
     return this.entitlements(nowUnix).subscriptions;
   }
 
+  /**
+   * Product → feature → `{ count, …resources }`. No prices. Query on app start.
+   */
+  normalizedEntitlements(nowUnix?: number): {
+    products: Record<string, Record<string, Record<string, number>>>;
+  } {
+    return this.entitlements(nowUnix).normalizedJson();
+  }
+
   startPolling(opts: {
     accessToken: () => string | Promise<string>;
     intervalMs?: number;
