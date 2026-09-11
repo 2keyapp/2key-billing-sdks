@@ -9,6 +9,7 @@ export 'src/auth/auth.dart';
 export 'src/catalog/plan_catalog.dart';
 export 'src/catalog/offering_catalog.dart';
 export 'src/catalog/hosts_catalog.dart';
+export 'src/catalog/merchant_catalog.dart';
 export 'src/config/billing_sdk_config.dart';
 export 'src/entitlements/addon_entitlements.dart';
 export 'src/exceptions/billing_sync_error.dart';

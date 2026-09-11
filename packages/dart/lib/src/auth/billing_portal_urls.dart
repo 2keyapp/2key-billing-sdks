@@ -57,6 +57,30 @@ class BillingPortalUrls {
     return uri.replace(queryParameters: {'access_token': token});
   }
 
+  /// Portal shop path for a stable shop slug (addon code or plan name).
+  ///
+  /// Single-SKU plans use addon code (`pqc`); bundles use the catalog plan
+  /// name (`All Add-ons Bundle`). Portal resolves either via live plans.
+  String shopItemPath(String slug) {
+    final needle = slug.trim();
+    if (needle.isEmpty) {
+      throw ArgumentError.value(slug, 'slug', 'shop slug must be non-empty');
+    }
+    final base = _normalizedShopPath;
+    final normalizedBase =
+        base.endsWith('/') ? base.substring(0, base.length - 1) : base;
+    final encoded = Uri.encodeComponent(needle);
+    return '$normalizedBase/$encoded';
+  }
+
+  /// Full portal purchase URL for [slug] (addon code or plan name).
+  Uri shopItem(String slug, {String? accessToken}) {
+    final uri = Uri.parse('$_base${shopItemPath(slug)}');
+    final token = accessToken?.trim();
+    if (token == null || token.isEmpty) return uri;
+    return uri.replace(queryParameters: {'access_token': token});
+  }
+
   /// Session handoff entry — Flutter app opens this after minting a one-time token.
   ///
   /// The portal verifies `token` and continues PKCE to establish browser JWTs.
