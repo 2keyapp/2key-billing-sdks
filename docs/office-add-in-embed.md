@@ -61,10 +61,9 @@ const billing = createBillingClient({
 const deviceJson = await billing.exportDevicePaste({ friendlyName: "Outlook" });
 await billing.restore();                       // verify cached signed snapshot
 await billing.pasteLicense(snapshotFromPortal);
-const e = billing.entitlements();
-
-if (!e.hasProduct("Scomm")) { /* locked */ }
-if (e.hasOffering("ai_assistant") || e.hasAddon("ai_assistant")) { /* BYOAI */ }
+const snapshot = billing.normalizedEntitlements();
+if ((snapshot.products?.Scomm?.pgp?.count ?? 0) < 1) { /* PGP locked */ }
+if ((snapshot.products?.Scomm?.ai_assistant?.count ?? 0) >= 1) { /* BYOAI */ }
 const seats = billing.hostSubscriptions(); // never restore() / payload.subscriptions
 ```
 
@@ -87,7 +86,7 @@ One change, no shim:
 
 1. Pin `@2key/browser-sdk`.
 2. Rewrite `AccountBillingPanel` onto DeviceID + license sync + gates.
-3. Point `@scomm-office/byoai` at SDK `hasAddon("ai_assistant")` / `hasOffering`.
+3. Point `@scomm-office/byoai` at `normalizedEntitlements().products.Scomm.ai_assistant.count >= 1`.
 4. **Delete** `packages/billing`.
 5. CI-forbid `better-auth` and local JWT parsers.
 6. Rewrite OpenSpec `006-billing-auth-js`: host consumes the JS SDK; do not port Dart.

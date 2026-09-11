@@ -198,6 +198,10 @@ class BillingSdk {
   static List<BillingSubscription> hostSubscriptions() =>
       entitlements()?.subscriptions ?? const [];
 
+  /// Product → feature → `{ count, …resources }`. No prices. Query on app start.
+  static Map<String, Object?>? normalizedEntitlements() =>
+      entitlements()?.toNormalizedJson();
+
   static Future<SyncResult> syncFromServer({
     required String authorizationToken,
     String? payingPartyId,

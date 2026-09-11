@@ -77,9 +77,21 @@ await BillingSdk.configureFrom(
 if (!session.accountSession!.licensePayload!.entitlementsAgainst(catalog)
     .hasProduct('Scomm')) { /* locked */ }
 final seats = BillingSdk.hostSubscriptions(); // catalog ∩ JWT — not payload.subscriptions
+final snapshot = BillingSdk.normalizedEntitlements();
+// {
+//   "products": {
+//     "Scomm": {
+//       "pgp": { "count": 1 },
+//       "pqc": { "count": 1 },
+//       "ai_assistant": { "count": 1 },
+//       "spam_filter": { "count": 1, "mailbox": 5 }
+//     }
+//   }
+// }
 ```
 
 Gates and seat lists must use `BillingSdk.entitlements()` / `hostSubscriptions()`.
+On start, query **normalized** JSON (`BillingSdk.normalizedEntitlements()` / `entitlements().toNormalizedJson()`). Default GROUP BY is **COUNT(*)** of granted offering units as `count` per addon/offering code. Other numeric resources are SUM'd on that same feature. Do not read `catalog.json` prices or `payload.subscriptions` for limits.
 `payload.subscriptions` stays the **raw JWT** for device bind (`allowsDevice` / SKI checks).
 A code on the JWT but not in this host’s slice stays off.
 A code in the slice but missing from the JWT stays off.
@@ -148,6 +160,17 @@ if (!billing.hasProduct('Scomm')) {
   /* locked */
 }
 const seats = billing.hostSubscriptions(); // catalog ∩ JWT — not restore().subscriptions
+const snapshot = billing.normalizedEntitlements();
+// {
+//   products: {
+//     Scomm: {
+//       pgp: { count: 1 },
+//       pqc: { count: 1 },
+//       ai_assistant: { count: 1 },
+//       spam_filter: { count: 1, mailbox: 5 },
+//     },
+//   },
+// }
 ```
 
 Do **not** iterate `payload.subscriptions` for feature lists or account UI. That list is the identity-wide JWT. Device bind (`licenseListsSki` / `allowsDevice`) still uses the raw JWT.
