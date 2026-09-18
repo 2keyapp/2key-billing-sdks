@@ -20,7 +20,8 @@ import 'package:two_key_dart_sdk/src/models/license_entitlements.dart';
 /// loaded, otherwise Dart ES256. Sync/bootstrap still require the native
 /// library. Plan catalog remains Dart HTTP ([BillingApiClient]).
 ///
-/// Use [BillingAuthClient] for login and [BillingSession] for persisted state.
+/// Use [BillingSession] for persisted license state. Construct
+/// [BillingAuthClient] only when the host performs billing-profile SSO.
 class BillingSdk {
   BillingSdk._();
 

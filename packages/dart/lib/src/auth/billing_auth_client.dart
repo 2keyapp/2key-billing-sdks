@@ -45,7 +45,15 @@ class BillingAuthClient {
     required this.storagePrefix,
     AuthSessionLauncher? sessionLauncher,
   })  : _origin = normalizeBillingApiBaseUrl(billingBaseUrl),
-        deepLinkScheme = deepLinkScheme {
+        deepLinkScheme = deepLinkScheme.trim() {
+    if (this.deepLinkScheme.isEmpty) {
+      throw ArgumentError.value(
+        deepLinkScheme,
+        'deepLinkScheme',
+        'BillingAuthClient requires a non-empty deep-link scheme. '
+        'Offline license hosts must not construct BillingAuthClient.',
+      );
+    }
     if (storagePrefix.trim().isEmpty) {
       throw ArgumentError.value(
         storagePrefix,
@@ -59,7 +67,7 @@ class BillingAuthClient {
       basePath: '/api/auth',
       plugin: ba.flutterClient(
         ba.FlutterClientOptions(
-          scheme: deepLinkScheme,
+          scheme: this.deepLinkScheme,
           storage: _BetterAuthStorageAdapter(storage),
           storagePrefix: storagePrefix,
           sessionLauncher: sessionLauncher,

@@ -1,6 +1,8 @@
 /// Resolves social OAuth callback URLs for native billing auth.
 ///
 /// Host apps supply platform URIs; this helper only picks among them.
+/// Using-party apps that do not sign in to billing SHOULD omit a deep-link
+/// scheme and MUST NOT ingest `?cookie=` session payloads.
 abstract final class BillingAuthRedirect {
   /// Query param Better Auth puts on `callbackURL` and echoes on `?cookie=`.
   ///
@@ -15,6 +17,26 @@ abstract final class BillingAuthRedirect {
     final want = expected?.trim() ?? '';
     final got = actual?.trim() ?? '';
     return want.isNotEmpty && got.isNotEmpty && want == got;
+  }
+
+  /// Session cookie from a native callback URI, or null.
+  ///
+  /// Returns null unless [callback] carries a non-empty `cookie` **and**
+  /// echoes [expectedNonce] on [callbackNonceQueryParam]. Cookie-only
+  /// redirects (no nonce) MUST NOT complete sign-in.
+  static String? sessionCookieIfNonceMatches({
+    required Uri callback,
+    required String? expectedNonce,
+  }) {
+    final cookie = callback.queryParameters['cookie']?.trim() ?? '';
+    if (cookie.isEmpty) return null;
+    if (!callbackNonceMatches(
+      expected: expectedNonce,
+      actual: callback.queryParameters[callbackNonceQueryParam],
+    )) {
+      return null;
+    }
+    return cookie;
   }
 
   /// Social sign-in callback (`signInSocial` callbackURL).

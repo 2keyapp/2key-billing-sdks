@@ -4,12 +4,14 @@ import '../session/license_entitlements.dart';
 /// Build-time configuration for using-party billing integration.
 ///
 /// Host apps map dart-defines / env into this object, then call
-/// [BillingSdk.configureFrom] and [BillingAuthClient.fromConfig].
+/// [BillingSdk.configureFrom]. Construct [BillingAuthClient.fromConfig] only
+/// when the host performs billing-profile SSO; using-party apps that paste an
+/// offline license JWT SHOULD omit [deepLinkScheme].
 class BillingSdkConfig {
   const BillingSdkConfig({
     required this.apiBaseUrl,
-    required this.deepLinkScheme,
     required this.storagePrefix,
+    this.deepLinkScheme = '',
     this.publicKeyPem,
     this.publicKeyAsset,
     this.portalBaseUrl,
@@ -24,6 +26,9 @@ class BillingSdkConfig {
   final String apiBaseUrl;
 
   /// App deep-link scheme for social OAuth callbacks (e.g. `myapp`).
+  ///
+  /// Empty when the host does not run Better Auth / profile SSO. [BillingAuthClient]
+  /// requires a non-empty value.
   final String deepLinkScheme;
 
   /// Single namespace for auth cookie storage and session keys.

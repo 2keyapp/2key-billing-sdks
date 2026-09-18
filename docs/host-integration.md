@@ -70,8 +70,9 @@ final catalog = hosts.forHost(
 await BillingSdk.configureFrom(
   BillingSdkConfig(
     apiBaseUrl: apiBaseUrl,
+    storagePrefix: 'billing_host',
     catalog: catalog,
-    // …
+    // Omit deepLinkScheme unless the host runs BillingAuthClient (profile SSO).
   ),
 );
 if (!session.accountSession!.licensePayload!.entitlementsAgainst(catalog)
