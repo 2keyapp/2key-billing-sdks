@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:crypto/crypto.dart';
+import '../crypto/billing_crypto_provider.dart';
 
 /// RFC 7638 JWK thumbprint (SHA-256), base64url without padding.
 ///
@@ -28,6 +28,7 @@ String jwkThumbprintSha256(Map<String, dynamic> jwk) {
 }
 
 String _b64UrlSha256(String canonicalUtf8) {
-  final digest = sha256.convert(utf8.encode(canonicalUtf8));
-  return base64Url.encode(digest.bytes).replaceAll('=', '');
+  final digest =
+      BillingCryptoProvider.current.sha256(utf8.encode(canonicalUtf8));
+  return base64Url.encode(digest).replaceAll('=', '');
 }

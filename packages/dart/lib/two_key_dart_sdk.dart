@@ -33,6 +33,7 @@ export 'src/session/in_memory_billing_session_store.dart';
 export 'src/session/license_entitlements.dart';
 export 'src/session/secure_billing_session_store.dart';
 export 'src/keys/public_key_loader_asset.dart' show loadPublicKeyFromAsset;
+export 'src/crypto/billing_crypto_provider.dart';
 export 'src/crypto/device_crypto.dart';
 export 'src/device/license_device_keystore.dart';
 export 'src/device/jwk_thumbprint.dart';
