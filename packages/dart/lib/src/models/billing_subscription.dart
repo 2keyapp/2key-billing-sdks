@@ -122,6 +122,7 @@ class BillingSubscription {
     this.usingPartyIdentitySubject,
     this.usingPartyEmail,
     this.assignedUserPartyId,
+    this.payingPartyId,
   });
 
   final String subscriptionId;
@@ -143,6 +144,10 @@ class BillingSubscription {
   final String? usingPartyIdentitySubject;
   final String? usingPartyEmail;
   final String? assignedUserPartyId;
+
+  /// Paying party that pays for this subscription. Differs from the license's
+  /// top-level `paying_party` when an organization pays for the holder's seat.
+  final String? payingPartyId;
 
   /// Parses from subscription object in JWT payload. Throws [FormatException] if invalid.
   factory BillingSubscription.fromJson(Map<String, dynamic> json) {
@@ -227,6 +232,12 @@ class BillingSubscription {
       'usingPartyIdentitySubject',
     );
     final usingEmail = getKey(json, 'using_party_email', 'usingPartyEmail');
+    final payingPartyRaw = getKey(json, 'paying_party_id', 'payingPartyId');
+    final payingPartyId = payingPartyRaw is String
+        ? payingPartyRaw.trim()
+        : payingPartyRaw is num
+            ? payingPartyRaw.toString()
+            : null;
     final devicesRaw = json['devices'];
     final devices = <LicenseDeviceClaim>[];
     if (devicesRaw is List) {
@@ -284,6 +295,8 @@ class BillingSubscription {
       assignedUserPartyId: assigned is String && assigned.isNotEmpty
           ? assigned
           : null,
+      payingPartyId:
+          payingPartyId != null && payingPartyId.isNotEmpty ? payingPartyId : null,
     );
   }
 

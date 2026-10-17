@@ -107,6 +107,20 @@ class BillingTokenPayload {
   List<BillingSubscription> get activeSubscriptions =>
       subscriptions.where((s) => s.isActive).toList();
 
+  /// Subscriptions an organization pays for: their paying party is not the
+  /// license holder's own (top-level [payingParty]). Hosts use this to hide
+  /// buying from people whose seats are managed by an organization.
+  List<BillingSubscription> get organizationPaidSubscriptions => [
+        for (final s in subscriptions)
+          if (s.payingPartyId != null && s.payingPartyId != payingParty.id) s,
+      ];
+
+  /// True when every subscription is paid by an organization (and there is at
+  /// least one). False when the holder pays for any of them.
+  bool get isOrganizationManaged =>
+      subscriptions.isNotEmpty &&
+      organizationPaidSubscriptions.length == subscriptions.length;
+
   /// Whether this payload has an active subscription with the given subscription ID.
   bool hasSubscription(String subscriptionId) =>
       subscriptions.any((s) => s.subscriptionId == subscriptionId);

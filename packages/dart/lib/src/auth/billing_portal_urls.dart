@@ -107,9 +107,9 @@ class BillingPortalUrls {
     );
   }
 
-  /// SPA Settings → Devices (canonical bind / list / revoke).
+  /// SPA Devices page (canonical bind / list / revoke).
   Uri devices() {
-    return Uri.parse('$_base/settings/devices');
+    return Uri.parse('$_base/devices');
   }
 
   /// No-JS fallback hosted on the billing API origin (`GET /portal/devices`).

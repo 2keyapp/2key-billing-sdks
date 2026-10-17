@@ -44,7 +44,7 @@ void main() {
     test('devices points at the SPA settings page', () {
       expect(
         urls.devices().toString(),
-        'https://portal.example.com/settings/devices',
+        'https://portal.example.com/devices',
       );
     });
 

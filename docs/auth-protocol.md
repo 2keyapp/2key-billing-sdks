@@ -38,7 +38,7 @@ Server must allow the SPA origin in Better Auth trusted origins / CORS.
 | Token | Auth client mints billing API JWT; feed into `2key_core` session |
 | Storage | Secure storage port (Keychain / Keystore / DPAPI / Flutter secure storage) namespaced by `storage_prefix` |
 | CLI | Device code / loopback / pasted token; OS keyring |
-| License | Offline: ES256 verify of a portal-issued signed snapshot (no JWT `exp`). Online GET sync is disabled. Canonical bind UI: SPA `{portal}/settings/devices`. |
+| License | Offline: ES256 verify of a portal-issued signed snapshot (no JWT `exp`). Online GET sync is disabled. Canonical bind UI: SPA `{portal}/devices`; apps open signed device links at `{billing}/link`, which finish at `{portal}/link/<id>`. |
 | Device bind | Per-seat `maxDevices` from plan `features_json`; SComm Connect = 5. At limit require `replaceSki`. Snapshot includes `devices[].ski` + `max_devices` |
 | BillingMode | Dart `BillingSession.mode` defaults to `offline` (blocks license HTTP). `online` stays compiled. |
 
