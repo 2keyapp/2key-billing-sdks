@@ -58,6 +58,35 @@ void main() {
     });
   });
 
+  group('MerchantShopPlan.isActive', () {
+    test('defaults to true and reads isActive false', () {
+      final catalog = MerchantCatalog.fromJson({
+        'products': {
+          'P': {
+            'plans': {
+              'Sold': {
+                'offeringCodes': ['a'],
+                'pricings': {
+                  'annual': {'currency': 'USD', 'basePrice': 10},
+                },
+              },
+              'Hidden': {
+                'isActive': false,
+                'offeringCodes': ['b'],
+                'pricings': {
+                  'annual': {'currency': 'USD', 'basePrice': 5},
+                },
+              },
+            },
+          },
+        },
+      });
+      final byName = {for (final p in catalog.plans) p.name: p};
+      expect(byName['Sold']!.isActive, isTrue);
+      expect(byName['Hidden']!.isActive, isFalse);
+    });
+  });
+
   group('BillingPortalUrls.shopItem', () {
     test('encodes plan name slugs for bundles', () {
       const urls = BillingPortalUrls(portalBaseUrl: 'https://portal.example.com');

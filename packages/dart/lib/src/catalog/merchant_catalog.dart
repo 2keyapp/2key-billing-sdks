@@ -70,6 +70,7 @@ class MerchantShopPlan {
     this.description,
     this.trialDays = 0,
     this.offeringDisplayNames = const {},
+    this.isActive = true,
   });
 
   final String productName;
@@ -79,6 +80,10 @@ class MerchantShopPlan {
   final List<String> offeringCodes;
   final List<MerchantPlanPricing> pricings;
   final Map<String, String> offeringDisplayNames;
+
+  /// False for hidden plans (`"isActive": false`): kept for existing
+  /// subscriptions, not sold. Hosts should not list them.
+  final bool isActive;
 
   bool get isBundle => offeringCodes.length > 1;
 
@@ -150,6 +155,7 @@ class MerchantShopPlan {
         : 0;
 
     final description = json['description'];
+    final isActive = json['isActive'] ?? json['is_active'];
     return MerchantShopPlan(
       productName: productName,
       name: name,
@@ -158,6 +164,7 @@ class MerchantShopPlan {
       offeringCodes: List.unmodifiable(offeringCodes),
       pricings: List.unmodifiable(pricings),
       offeringDisplayNames: Map.unmodifiable(offeringDisplayNames),
+      isActive: isActive is bool ? isActive : true,
     );
   }
 }
