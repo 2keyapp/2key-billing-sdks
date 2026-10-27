@@ -35,7 +35,12 @@ String? _findCoreLib() {
 }
 
 /// Flat payload: payload_version, iss, aud, iat, exp, paying_party, subscriptions[].
-String _createCanonicalBillingToken({Duration? expiresIn}) {
+String _createCanonicalBillingToken({
+  Duration? expiresIn,
+  String payingPartyId = 'party_456',
+  String subscriptionId = 'sub_canon_1',
+  String planId = 'plan_premium',
+}) {
   final exp = expiresIn != null
       ? DateTime.now().add(expiresIn).millisecondsSinceEpoch ~/ 1000
       : DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch ~/
@@ -52,15 +57,15 @@ String _createCanonicalBillingToken({Duration? expiresIn}) {
       'iat': iat,
       'exp': exp,
       'paying_party': {
-        'id': 'party_456',
+        'id': payingPartyId,
         'sso_id': 'sso_abc',
         'billing_email': 'billing@example.com',
         'organization_name': 'Acme Inc',
       },
       'subscriptions': [
         {
-          'subscription_id': 'sub_canon_1',
-          'plan_id': 'plan_premium',
+          'subscription_id': subscriptionId,
+          'plan_id': planId,
           'product_id': 'prod_1',
           'plan_name': 'Premium',
           'product_name': 'Product One',
@@ -133,6 +138,29 @@ void main() {
         expect(payload.hasSubscription('sub_99'), isFalse);
         expect(payload.hasPlan('plan_premium'), isTrue);
         expect(payload.hasProduct('prod_1'), isTrue);
+      });
+
+      test('init(one license per line) merges them, first payer on top', () {
+        if (coreLib == null) return;
+        final personal = _createCanonicalBillingToken();
+        final company = _createCanonicalBillingToken(
+          payingPartyId: 'party_company',
+          subscriptionId: 'sub_company_1',
+          planId: 'plan_company',
+        );
+        BillingSdk.init('$personal\n$company\n');
+        final payload = BillingSdk.getPayload();
+        expect(payload, isNotNull);
+        expect(payload!.payingParty.id, 'party_456');
+        expect(payload.subscriptionIds, ['sub_canon_1', 'sub_company_1']);
+        expect(payload.hasPlan('plan_premium'), isTrue);
+        expect(payload.hasPlan('plan_company'), isTrue);
+      });
+
+      test('init(lines with one bad license) rejects them all', () {
+        if (coreLib == null) return;
+        BillingSdk.init('${_createCanonicalBillingToken()}\nnot.a.jwt');
+        expect(BillingSdk.getPayload(), isNull);
       });
     });
 

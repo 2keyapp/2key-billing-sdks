@@ -133,8 +133,12 @@ class BillingApiClient {
         final body = jsonDecode(response.body) as Map<String, dynamic>?;
         final rawData = body?['data'];
         final data = rawData is Map<String, dynamic> ? rawData : body;
-        final signed =
-            data?['signedToken'] ?? data?['signed_token'] ?? data?['token'];
+        // Device licenses come as `signedTokens` (one per organization);
+        // kept together, one per line, for [BillingSdk.verifyAndDecodeAll].
+        final many = data?['signedTokens'];
+        final signed = many is List
+            ? many.whereType<String>().join('\n')
+            : data?['signedToken'] ?? data?['signed_token'] ?? data?['token'];
 
         if (signed is String && signed.isNotEmpty) {
           BillingSdkLogger.success(

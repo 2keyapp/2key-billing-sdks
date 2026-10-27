@@ -176,13 +176,42 @@ class BillingSdk {
       _currentPayload = null;
       return;
     }
-    final result = verifyAndDecode(savedSignedJson.trim());
+    final result = verifyAndDecodeAll(savedSignedJson);
     switch (result) {
       case VerifySuccess(:final payload):
         _currentPayload = payload;
       case VerifyFailure():
         _currentPayload = null;
     }
+  }
+
+  /// License keys in pasted or stored text: one signed license per line (a
+  /// device gets one per organization it holds seats from).
+  static List<String> splitLicenses(String text) => text
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty)
+      .toList(growable: false);
+
+  /// Verifies every license in [text] (see [splitLicenses]) and keeps their
+  /// merged view ([BillingTokenPayload.merge]). Fails if any one fails.
+  static VerifyResult verifyAndDecodeAll(String text) {
+    final tokens = splitLicenses(text);
+    if (tokens.length <= 1) return verifyAndDecode(text);
+    final previous = _currentPayload;
+    final payloads = <BillingTokenPayload>[];
+    for (final token in tokens) {
+      final result = verifyAndDecode(token);
+      switch (result) {
+        case VerifySuccess(:final payload):
+          payloads.add(payload);
+        case VerifyFailure():
+          _currentPayload = previous;
+          return result;
+      }
+    }
+    final merged = BillingTokenPayload.merge(payloads);
+    _currentPayload = merged;
+    return VerifySuccess(merged);
   }
 
   static BillingTokenPayload? getPayload() => _currentPayload;

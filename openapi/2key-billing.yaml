@@ -40,13 +40,11 @@ paths:
                   data:
                     type: object
                     properties:
-                      signedToken:
-                        type: string
-                        description: ES256 license JWT
-                      signed_token:
-                        type: string
-                      token:
-                        type: string
+                      signedTokens:
+                        type: array
+                        items:
+                          type: string
+                        description: ES256 license JWTs, one per organization membership (own first)
         "304":
           description: Not modified (ETag match)
         "401":
@@ -700,8 +698,10 @@ components:
           $ref: "#/components/schemas/LicenseDeviceSeat"
         replacedSki:
           type: string
-        signedToken:
-          type: string
+        signedTokens:
+          type: array
+          items:
+            type: string
     Plan:
       type: object
       required: [id, name, billing_interval, base_price, currency]

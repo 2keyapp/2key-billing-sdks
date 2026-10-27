@@ -80,6 +80,32 @@ class BillingTokenPayload {
     );
   }
 
+  /// One view over several verified device licenses for the same device: billing
+  /// signs one per organization membership (e.g. Personal and a company).
+  ///
+  /// Subscriptions are combined. The first license's [payingParty] stays
+  /// top-level (billing lists the holder's own first). Server entitlements are
+  /// per license, so the merged view derives gates from the combined
+  /// subscriptions instead.
+  factory BillingTokenPayload.merge(List<BillingTokenPayload> payloads) {
+    if (payloads.isEmpty) {
+      throw ArgumentError('At least one license is required.');
+    }
+    if (payloads.length == 1) return payloads.single;
+    final first = payloads.first;
+    return BillingTokenPayload(
+      payloadVersion: first.payloadVersion,
+      expiresAt: payloads
+          .map((p) => p.expiresAt)
+          .reduce((a, b) => a.isBefore(b) ? a : b),
+      payingParty: first.payingParty,
+      subscriptions: [for (final p in payloads) ...p.subscriptions],
+      issuedAt: first.issuedAt,
+      issuer: first.issuer,
+      audience: first.audience,
+    );
+  }
+
   /// Feature-gate view (server entitlements when v3, else derived). JWT-only.
   LicenseEntitlements get entitlements =>
       LicenseEntitlements.fromPayload(this);

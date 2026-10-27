@@ -191,12 +191,13 @@ class BillingSession {
     required String accountKey,
     required String token,
   }) async {
-    final trimmed = token.trim();
+    // One or more licenses (one per line); stored normalized, one per line.
+    final trimmed = BillingSdk.splitLicenses(token).join('\n');
     if (trimmed.isEmpty) {
       return const SessionVerifyFailure('Paste a billing token first.');
     }
 
-    final result = BillingSdk.verifyAndDecode(trimmed);
+    final result = BillingSdk.verifyAndDecodeAll(trimmed);
     switch (result) {
       case VerifySuccess():
         await _store.writeToken(accountKey, trimmed);
