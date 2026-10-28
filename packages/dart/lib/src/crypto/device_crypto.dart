@@ -3,8 +3,37 @@ import 'dart:io';
 
 import '../frb/frb_wire.dart';
 
+/// Device x.509 / mTLS / PoP crypto port used by enroll + agent-token flows.
+///
+/// [DeviceCrypto] is the `two_key_core` implementation; tenants with their own
+/// native crypto (e.g. IDR `idr_dp`) implement this directly.
+abstract interface class DeviceCryptoApi {
+  Future<GeneratedKeyAndCsr> generateKeyAndCsr(String host, {String? commonName});
+
+  Future<SignedClientCert> signClientCertFromCsr({
+    required String csrPem,
+    required String caCertPem,
+    required Map<String, dynamic> caPrivateJwk,
+    required String caCommonName,
+    required String ski,
+    String? host,
+    int? notAfterDays,
+  });
+
+  Future<bool> verifyCert({required String leafPem, required String issuerPem});
+
+  Future<MtlsClientMaterial> materializeMtls({
+    required Map<String, dynamic> identityJson,
+  });
+
+  Future<String> signJsonB64Url({
+    required String privatePem,
+    required String payloadJson,
+  });
+}
+
 /// Device x.509 / mTLS / PoP crypto via `two_key_crypto_*` C ABI.
-class DeviceCrypto {
+class DeviceCrypto implements DeviceCryptoApi {
   DeviceCrypto._(this._wire);
 
   final FrbWire _wire;
@@ -18,6 +47,7 @@ class DeviceCrypto {
   static bool get isAvailable => FrbWire.isAvailable;
 
   /// Generate Ed25519 keypair + PKCS#10 CSR for [host].
+  @override
   Future<GeneratedKeyAndCsr> generateKeyAndCsr(String host, {String? commonName}) async {
     final result = _wire.cryptoGenerateKeyAndCsr(
       jsonEncode({
@@ -36,6 +66,7 @@ class DeviceCrypto {
   }
 
   /// Sign a device CSR with a CA private JWK → leaf + chain PEM.
+  @override
   Future<SignedClientCert> signClientCertFromCsr({
     required String csrPem,
     required String caCertPem,
@@ -65,6 +96,7 @@ class DeviceCrypto {
   }
 
   /// Verify leaf cert Ed25519 signature against issuer PEM.
+  @override
   Future<bool> verifyCert({
     required String leafPem,
     required String issuerPem,
@@ -78,6 +110,7 @@ class DeviceCrypto {
   }
 
   /// Build mTLS client PEM material from persisted identity JSON.
+  @override
   Future<MtlsClientMaterial> materializeMtls({
     required Map<String, dynamic> identityJson,
   }) async {
@@ -93,6 +126,7 @@ class DeviceCrypto {
   }
 
   /// Sign JSON payload with Ed25519 private PEM (agent proof-of-possession).
+  @override
   Future<String> signJsonB64Url({
     required String privatePem,
     required String payloadJson,

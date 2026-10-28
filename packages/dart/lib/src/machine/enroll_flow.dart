@@ -5,11 +5,32 @@ import '../crypto/device_crypto.dart';
 import '../models/machine_authn/machine_authn.dart';
 import 'device_identity_store.dart';
 
+/// Poll `enroll-pull` until approved, rejected, or [pullTimeout].
+Future<EnrollPullApproved> pullEnrollUntilApproved({
+  required Future<EnrollPullResult> Function(String pullToken) pull,
+  required String pullToken,
+  Duration pullInterval = const Duration(seconds: 3),
+  Duration pullTimeout = const Duration(minutes: 15),
+}) async {
+  final deadline = DateTime.now().add(pullTimeout);
+  while (DateTime.now().isBefore(deadline)) {
+    switch (await pull(pullToken)) {
+      case EnrollPullApproved approved:
+        return approved;
+      case EnrollPullRejected():
+        throw StateError('Enrollment was rejected');
+      case EnrollPullPending():
+        await Future<void>.delayed(pullInterval);
+    }
+  }
+  throw TimeoutException('Enrollment pull timed out', pullTimeout);
+}
+
 /// Target device enrollment: CSR → enroll-create → poll pull → persist.
 class MachineEnrollFlow {
   MachineEnrollFlow({
     required MachineAuthnClient http,
-    required DeviceCrypto crypto,
+    required DeviceCryptoApi crypto,
     required DeviceIdentityStore store,
     this.pullInterval = const Duration(seconds: 3),
     this.pullTimeout = const Duration(minutes: 15),
@@ -18,7 +39,7 @@ class MachineEnrollFlow {
         _store = store;
 
   final MachineAuthnClient _http;
-  final DeviceCrypto _crypto;
+  final DeviceCryptoApi _crypto;
   final DeviceIdentityStore _store;
   final Duration pullInterval;
   final Duration pullTimeout;
@@ -73,21 +94,13 @@ class MachineEnrollFlow {
   }
 
   /// Poll `enroll-pull` until approved or timeout.
-  Future<EnrollPullApproved> pullUntilApproved(String pullToken) async {
-    final deadline = DateTime.now().add(pullTimeout);
-    while (DateTime.now().isBefore(deadline)) {
-      final result = await _http.enrollPull(pullToken: pullToken);
-      switch (result) {
-        case EnrollPullApproved approved:
-          return approved;
-        case EnrollPullRejected():
-          throw StateError('Enrollment was rejected');
-        case EnrollPullPending():
-          await Future<void>.delayed(pullInterval);
-      }
-    }
-    throw TimeoutException('Enrollment pull timed out', pullTimeout);
-  }
+  Future<EnrollPullApproved> pullUntilApproved(String pullToken) =>
+      pullEnrollUntilApproved(
+        pull: (token) => _http.enrollPull(pullToken: token),
+        pullToken: pullToken,
+        pullInterval: pullInterval,
+        pullTimeout: pullTimeout,
+      );
 
   /// Register org root CA on paying party (admin session on [MachineAuthnClient]).
   Future<RegisterMachineAuthnResult> registerOrg({

@@ -132,7 +132,8 @@ void main() {
         expect(payload.hasSubscription('sub_canon_1'), isTrue);
         expect(payload.hasSubscription('sub_99'), isFalse);
         expect(payload.hasPlan('plan_premium'), isTrue);
-        expect(payload.hasProduct('prod_1'), isTrue);
+        expect(payload.hasProduct('Product One'), isTrue);
+        expect(payload.hasProduct('prod_1'), isFalse);
       });
     });
 

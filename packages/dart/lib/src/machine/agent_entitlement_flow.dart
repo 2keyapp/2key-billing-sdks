@@ -8,14 +8,14 @@ import 'device_identity_store.dart';
 class AgentEntitlementFlow {
   AgentEntitlementFlow({
     required AgentTokenClient tokenClient,
-    required DeviceCrypto crypto,
+    required DeviceCryptoApi crypto,
     required DeviceIdentityStore store,
   })  : _tokenClient = tokenClient,
         _crypto = crypto,
         _store = store;
 
   final AgentTokenClient _tokenClient;
-  final DeviceCrypto _crypto;
+  final DeviceCryptoApi _crypto;
   final DeviceIdentityStore _store;
 
   /// Load identity by SKI, sign PoP, mint agent token.

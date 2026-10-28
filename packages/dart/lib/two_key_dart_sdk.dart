@@ -3,6 +3,7 @@ library two_key_dart_sdk;
 
 export 'src/billing_sdk.dart';
 export 'src/api/billing_api_client.dart';
+export 'src/api/delegate_permissions_client.dart';
 export 'src/api/machine_authn_client.dart';
 export 'src/api/agent_token_client.dart';
 export 'src/auth/auth.dart';

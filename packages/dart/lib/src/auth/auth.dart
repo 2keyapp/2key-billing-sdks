@@ -9,4 +9,6 @@ export 'billing_auth_tokens.dart';
 export 'billing_portal_urls.dart';
 export 'billing_profile_merge.dart';
 export 'jwt_payload.dart';
+export 'loopback_session_launcher.dart';
+export 'org_roster.dart';
 // BillingApiTokenMint stays internal — use BillingAuthClient.acquireApiToken.

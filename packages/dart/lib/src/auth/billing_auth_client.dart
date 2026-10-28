@@ -1,4 +1,5 @@
 import 'package:better_auth/better_auth.dart' as ba;
+import 'package:http/http.dart' as http;
 
 import '../api/billing_api_client.dart';
 import '../config/billing_sdk_config.dart';
@@ -11,6 +12,7 @@ import 'billing_auth_session.dart';
 import 'billing_auth_storage.dart';
 import 'billing_auth_tokens.dart';
 import 'billing_portal_urls.dart';
+import 'org_roster.dart';
 
 /// Adapts [BillingAuthStorage] to Better Auth's internal [ba.AuthStorage].
 class _BetterAuthStorageAdapter implements ba.AuthStorage {
@@ -44,7 +46,9 @@ class BillingAuthClient {
     required BillingAuthStorage storage,
     required this.storagePrefix,
     AuthSessionLauncher? sessionLauncher,
+    http.Client? httpClient,
   })  : _origin = normalizeBillingApiBaseUrl(billingBaseUrl),
+        _storage = storage,
         deepLinkScheme = deepLinkScheme.trim() {
     if (this.deepLinkScheme.isEmpty) {
       throw ArgumentError.value(
@@ -73,12 +77,16 @@ class BillingAuthClient {
           sessionLauncher: sessionLauncher,
         ),
       ),
+      httpClient: httpClient,
       sessionOptions: const ba.SessionOptions(
         refetchInterval: defaultLicensePollInterval,
         refetchOnAppResume: true,
       ),
     );
-    _tokenMint = BillingApiTokenMint(authBaseUrl: authBaseUrl);
+    _tokenMint = BillingApiTokenMint(
+      authBaseUrl: authBaseUrl,
+      httpClient: httpClient,
+    );
   }
 
   /// Builds a client from [BillingSdkConfig].
@@ -101,6 +109,7 @@ class BillingAuthClient {
   }
 
   final String _origin;
+  final BillingAuthStorage _storage;
   final String storagePrefix;
   final String deepLinkScheme;
   late final ba.AuthClient _authClient;
@@ -183,8 +192,15 @@ class BillingAuthClient {
   }
 
   /// Clears persisted auth cookies/session cache on this device.
-  Future<void> clearLocalAuthSession() =>
-      _authClient.plugin?.clearSessionCache() ?? Future.value();
+  ///
+  /// Better Auth blanks its keys to `{}`; they are removed so nothing of the
+  /// session is left in storage. Key names follow Better Auth's flutter
+  /// plugin (`<prefix>_cookie`, `<prefix>_session_data`).
+  Future<void> clearLocalAuthSession() async {
+    await _authClient.plugin?.clearSessionCache();
+    await _storage.removeItem('${storagePrefix}_cookie');
+    await _storage.removeItem('${storagePrefix}_session_data');
+  }
 
   Future<String> getSessionCookie() => _authClient.getCookie();
 
@@ -221,6 +237,55 @@ class BillingAuthClient {
   /// Binds the current session to an organization slug (`me` by default).
   /// Paying-party UIs call this with a company slug. Using-party mint already
   /// binds `me` inside [acquireApiToken] when the session is unbound.
+  /// Members of the bound org (`GET /organization/list-members`).
+  Future<List<OrgMember>> listOrganizationMembers() async {
+    final result = await _authClient.getJson(
+      '/organization/list-members',
+      query: {'limit': '100'},
+    );
+    _throwOnError(result.error, 'Could not list organization members');
+    return parseOrgMembers(result.data);
+  }
+
+  /// Pending invites (`GET /organization/get-full-organization`).
+  Future<List<OrgInvitation>> listOrganizationInvitations() async {
+    final result =
+        await _authClient.getJson('/organization/get-full-organization');
+    _throwOnError(result.error, 'Could not list invitations');
+    return parseOrgInvitations(result.data);
+  }
+
+  /// Invite [email] as `admin` or `member`. Does not open a browser.
+  Future<void> inviteOrganizationMember({
+    required String email,
+    String role = 'member',
+  }) async {
+    final result = await _authClient.postJson('/organization/invite-member', {
+      'email': email.trim().toLowerCase(),
+      'role': role.trim().toLowerCase(),
+    });
+    _throwOnError(result.error, 'Could not invite member');
+  }
+
+  Future<void> updateOrganizationMemberRole({
+    required String memberId,
+    required String role,
+  }) async {
+    final result =
+        await _authClient.postJson('/organization/update-member-role', {
+      'memberId': memberId,
+      'role': role.trim().toLowerCase(),
+    });
+    _throwOnError(result.error, 'Could not update member role');
+  }
+
+  Future<void> removeOrganizationMember({required String memberIdOrEmail}) async {
+    final result = await _authClient.postJson('/organization/remove-member', {
+      'memberIdOrEmail': memberIdOrEmail.trim(),
+    }, refreshSession: true);
+    _throwOnError(result.error, 'Could not remove member');
+  }
+
   Future<({String organizationId, String slug, String name, String role})>
       bindOrganization({String slug = 'me'}) async {
     final cookie = await getSessionCookie();
@@ -235,12 +300,16 @@ class BillingAuthClient {
     required String portalBaseUrl,
     String? redirectPath,
     String shopPath = '/shop',
+    String? orgSlug,
   }) async {
     final portalUrls = BillingPortalUrls(
       portalBaseUrl: portalBaseUrl,
       shopPath: shopPath,
     );
-    final target = portalUrls.sessionHandoff(redirectPath: redirectPath);
+    final target = portalUrls.sessionHandoff(
+      redirectPath: redirectPath,
+      orgSlug: orgSlug,
+    );
     final result = await _authClient.createSessionHandoffUrl(
       targetUrl: target.toString(),
     );

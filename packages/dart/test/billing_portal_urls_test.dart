@@ -19,6 +19,16 @@ void main() {
       );
     });
 
+    test('sessionHandoff preselects org slug for bind-org', () {
+      expect(
+        urls
+            .sessionHandoff(redirectPath: '/subscriptions', orgSlug: 'acme')
+            .toString(),
+        'https://portal.example.com/auth/handoff'
+        '?slug=acme&redirect=%2Fsubscriptions',
+      );
+    });
+
     test('sessionHandoff ignores unsafe redirect paths', () {
       expect(
         urls.sessionHandoff(redirectPath: '//evil.example.com').toString(),

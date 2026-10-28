@@ -84,8 +84,11 @@ class BillingPortalUrls {
   /// Session handoff entry — Flutter app opens this after minting a one-time token.
   ///
   /// The portal verifies `token` and continues PKCE to establish browser JWTs.
-  Uri sessionHandoff({String? redirectPath}) {
+  /// [orgSlug] preselects that organization on the portal's bind-org step.
+  Uri sessionHandoff({String? redirectPath, String? orgSlug}) {
     final params = <String, String>{};
+    final slug = orgSlug?.trim();
+    if (slug != null && slug.isNotEmpty) params['slug'] = slug;
     final redirect = redirectPath?.trim();
     if (redirect != null &&
         redirect.isNotEmpty &&

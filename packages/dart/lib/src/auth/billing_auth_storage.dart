@@ -1,4 +1,7 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+// Flutter-free interface; the FlutterSecureStorage impl is only linked when
+// `dart:ui` exists so headless Dart VM hosts (CLIs, daemons) can use auth.
+export 'secure_billing_auth_storage_stub.dart'
+    if (dart.library.ui) 'secure_billing_auth_storage_flutter.dart';
 
 /// Persists auth session secrets for [BillingAuthClient].
 ///
@@ -8,27 +11,4 @@ abstract interface class BillingAuthStorage {
   Future<String?> getItem(String key);
   Future<void> setItem(String key, String value);
   Future<void> removeItem(String key);
-}
-
-/// [BillingAuthStorage] backed by [FlutterSecureStorage].
-class SecureBillingAuthStorage implements BillingAuthStorage {
-  SecureBillingAuthStorage({
-    FlutterSecureStorage? storage,
-    required this.storagePrefix,
-  }) : _storage = storage ?? const FlutterSecureStorage();
-
-  final FlutterSecureStorage _storage;
-  final String storagePrefix;
-
-  String _key(String name) => '$storagePrefix:$name';
-
-  @override
-  Future<String?> getItem(String key) => _storage.read(key: _key(key));
-
-  @override
-  Future<void> setItem(String key, String value) =>
-      _storage.write(key: _key(key), value: value);
-
-  @override
-  Future<void> removeItem(String key) => _storage.delete(key: _key(key));
 }
